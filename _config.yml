@@ -26,7 +26,7 @@ baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://blog.debug.sexy" # the base hostname & protocol for your site, e.g. http://example.com
 
 # Build settings
-remote_theme: jekyll/minima
+remote_theme: grammaright/minima # 10124515953527c8990a2de99ae4ddb2a81ffee3
 plugins:
   - jekyll-feed
   - jekyll-target-blank
