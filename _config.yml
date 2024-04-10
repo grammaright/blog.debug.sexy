@@ -27,10 +27,11 @@ url: "https://blog.debug.sexy" # the base hostname & protocol for your site, e.g
 github_username: grammaright
 
 # Build settings
-theme: minima
+remote_theme: jekyll/minima
 plugins:
   - jekyll-feed
   - jekyll-target-blank
+  - jekyll-remote-theme
 
 google_analytics: G-Q3LJHJJM2X
 
