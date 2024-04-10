@@ -21,10 +21,9 @@
 title: at the boundary
 email: grammaright@me.com
 description: >- # this means to ignore newlines until "baseurl:"
-  New things written by Kyoseung Koo
+  New things in the world
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://blog.debug.sexy" # the base hostname & protocol for your site, e.g. http://example.com
-github_username: grammaright
 
 # Build settings
 remote_theme: jekyll/minima
@@ -34,6 +33,14 @@ plugins:
   - jekyll-remote-theme
 
 google_analytics: G-Q3LJHJJM2X
+
+minima:
+  skin: auto
+
+author:
+  name: "Kyoseung Koo"
+  email: "grammaright@me.com"
+
 
 # Exclude from processing.
 # The following items will not be processed, by default.
