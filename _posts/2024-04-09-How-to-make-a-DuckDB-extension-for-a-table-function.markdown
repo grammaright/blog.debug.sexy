@@ -32,7 +32,7 @@ SELECT * FROM read_csv('flights.csv');
 
 DuckDB's [extension template](https://github.com/duckdb/extension-template) serves as an excellent starting point for understanding extension creation. It is beneficial to consult this alongside the blog post, starting with `/src/quack_extension.cpp`.
 
-To create a DuckDB extension, you need to define an extension class that extends the [`Extension`](https://github.com/duckdb/duckdb/blob/v0.10.0/src/include/duckdb/main/extension.hpp) class. This class has two important methods: `Load(DuckDB &)` and `Name()`. When you submit a query to load an extension, like `LOAD foobar`, DuckDB searches for the extension name by calling extensions' `Name()` methods. If found, it calls the `Load(DuckDB &)` function to load the extension.
+To create a DuckDB extension, you need to define an extension class that extends the [`Extension`](https://github.com/duckdb/duckdb/blob/v0.10.0/src/include/duckdb/main/extension.hpp) class. This class has two important methods: `Name()` and `Load(DuckDB &)`, each of which returns the name of your extension and  defines what your extension provides, respectively. When you submit a query to load an extension, like `LOAD foobar`, DuckDB calls the `Load(DuckDB &)` function to load the extension.
 
 ```cpp
 class Extension {
@@ -45,7 +45,7 @@ public:
 ```
 *Code 1. The `Extension` class*
 
-The `Load(DuckDB &)` function is responsible for registering functions to let DuckDB know what functions can be used. You need to define a table function inside this method and then register the function by calling the `ExtensionUtil::RegisterFunction()` method.
+The `Load(DuckDB &)` method is responsible for registering functions to let DuckDB know what functions can be used. You need to define a table function inside this method and then register the function by calling the `ExtensionUtil::RegisterFunction()` method.
 
 ```cpp
 void ArrayExtension::Load(DuckDB &db) {
@@ -55,7 +55,9 @@ void ArrayExtension::Load(DuckDB &db) {
 ```
 *Code 2. An example of the `Load(DuckDB &)` function*
 
-To define a table function, you need to create several functions and then add them to your table function definition. The snippet below shows how DuckDB defines the `read_csv()` function. `GetFunction()` initializes a table function by setting up some options before returning the function. Let's examine these steps.
+Please note that if you plan to distribute your extension, you need to define C functions such as `DUCKDB_EXTENSION_API void EXTENSIONNAME_init(duckdb::DatabaseInstance &db)` and `DUCKDB_EXTENSION_API const char *EXTENSIONNAME_version()`. These functions are invoked when you attempt to load an extension from the DuckDB shell. For more information, please refer to [the extension template](https://github.com/duckdb/extension-template/blob/main/src/quack_extension.cpp#L56).
+
+To define a table function, you need to create several functions and then add them to your table function definition. The snippet below shows how DuckDB defines the `read_csv()` function. `GetFunction()` initializes a table function by setting up some options before returning the function. Let's examine these steps in the next section.
 
 ```cpp
 TableFunction ReadCSVTableFunction::GetFunction() {
@@ -72,6 +74,7 @@ TableFunction ReadCSVTableFunction::GetFunction() {
 }
 ```
 *Code 3. A snippet of [`ReadCSVTableFunction::GetFunction()`](https://github.com/duckdb/duckdb/blob/v0.10.0/src/function/table/read_csv.cpp#L315)*
+
 
 ## How to Define a Table Function?
 
