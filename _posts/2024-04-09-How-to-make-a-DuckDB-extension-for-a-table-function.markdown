@@ -2,7 +2,7 @@
 layout: post
 title:  "How to Make a DuckDB Extension for a Table Function?"
 date:   2024-04-09 23:00:28 +0900
-categories: duckdb extension dbms
+categories: duckdb
 ---
 
 DuckDB is one of the most popular database management systems, aimed at embedded data analytics. It is not only lightweight but also incredibly fast, making it an appealing choice for developers and data engineers. One way to leverage its capabilities, due to its extendable nature, is by creating an extension to fetch data from other applications.

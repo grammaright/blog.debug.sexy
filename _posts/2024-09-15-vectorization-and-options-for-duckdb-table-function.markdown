@@ -2,7 +2,7 @@
 layout: post
 title:  "Vectorization and Options for DuckDB Table Function"
 date:   2024-09-15 23:38:28 +0900
-categories: duckdb extension dbms
+categories: duckdb
 ---
 
 In [the previous post]({% post_url 2024-04-09-How-to-make-a-DuckDB-extension-for-a-table-function %}), we explored how to create a DuckDB extension for a table function with simple examples. 
