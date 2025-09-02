@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "NoSQL 개요: 등장 배경, CAP/BASE 이론, 그리고 대표적 데이터 모델"
+title:  "NoSQL 개요: 등장 배경, CAP/BASE, 그리고 대표적 데이터 모델"
 date:   2025-08-31 18:00:00 +0900
 categories: nosql
 ---
