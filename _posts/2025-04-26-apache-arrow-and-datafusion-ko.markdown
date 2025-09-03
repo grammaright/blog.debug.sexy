@@ -21,7 +21,7 @@ categories: dbms
 *DBMS 구성도 개요 ([출처](https://www.oreilly.com/library/view/database-internals/9781492040330/ch01.html))* 
 {: refdef}
 
-위 그림은 DBMS의 일반적인 아키텍쳐에 대한 이미지입니다. 가장 위의 Transport 영역은 DBMS 바깥의 영역이며, DBMS에 접근하는 클라이언트 프로그램(예: `psql`, `mysql` 커맨드 프로그램 등)이 이 영역에 해당합니다. 그 아래의 Query Processor, Execution Engine, Storage Engine을 포함하여 하나의 DBMS라고 혹은 하나의 인스턴스라고 통상 부릅니다.
+위 그림은 DBMS의 일반적인 아키텍쳐에 대한 이미지입니다. 가장 위의 Transport layer는 클라이언트 프로그램(예: `psql`, `mysql` 커맨드 프로그램 등)이나 다른 DBMS와의 통신을 담당합니다. Transport layer, Query Processor, Execution Engine, Storage Engine을 포함하여 하나의 DBMS라고 혹은 하나의 인스턴스라고 통상 부릅니다.
 
 사용자가 클라이언트 프로그램을 통해 쿼리(query 또는 질의)를 입력하면, 해당 쿼리는 DBMS의 Query Processor로 전달됩니다. 관계형 데이터베이스 관리 시스템(Relational Database Management System, 줄여서 RDBMS)의 경우, 통상 Structured Query Language(SQL)을 통해 쿼리를 표현하고, 사용자는 이를 이용하여 쿼리를 요청합니다. 이는 사람이 읽을 수 있는 형태의 언어(human readable language)이기 때문에, Query Parser는 이 SQL을 컴퓨터가 이해하기 위한 형태로 변환합니다.
 
@@ -29,7 +29,7 @@ categories: dbms
 
 **Query Optimizer**는 이 logical plan을 입력으로 받아 **최적화된 physical plan**(물리 계획; execution plan 혹은 실행 계획이라고도 불림)을 생성합니다. 이 과정에서 이름에 걸맞게 logical plan 혹은 physical plan을 더 좋은 성능을 가지도록 최적화합니다. Physical plan은 logical plan을 어떻게 실행할지에 대한 정보를 포함하고 있습니다. 예를들어 위의 logical plan에는 "Join을 한다"라는 정보를 포함하고 있다면, physical plan에는 "Join을 Hash Join을 통해 처리한다"라는 정보를 포함하고 있습니다.
 
-Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 됩니다. **Execution Engine은 Storage Engine과 긴밀하게 연결되어 있고, 이것이 관리하는 형태를 기반으로 하여 physical plan을 수행하게 됩니다.** 예를들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 형태 또한 column oriented data structure로 관리될 것입니다(e.g., 예를들어 `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다). Execution Engine은 Storage Engine이 제공하는 데이터 형태를 이용하여 쿼리를 수행하게 되는 것이지요.
+Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 됩니다. **Execution Engine은 Storage Engine이 제공하는 데이터 형태에 따라 처리를 합니다.** 예를들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 형태 또한 column oriented data structure로 관리될 것입니다(e.g., 예를들어 `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다).
 
 이 섹션에서 Query Processor, Execution Engine, Storage Engine의 역할을 간략하게 알아보았습니다. Apache Arrow는 여기에서 Storage Engine의 데이터 관리 형태, Apache DataFusion은 Query Processor와 Execution Engine에 해당한다고 볼 수 있습니다. 자세한 내용을 앞으로 살펴보겠습니다.
 
@@ -40,14 +40,6 @@ Apache Arrow는 **빠른 데이터 교환** 및 **인메모리 분석**을 위�
 이 섹션에서는 Apache Arrow의 **1) multi-language를 지원하며 빠르게 데이터를 교환할 수 있고**, **2) columnar in-memory format을 이용하여 데이터를 빠르게 처리할 수 있는** 점에 대해 중점적으로 논의해보도록 하겠습니다.
 
 ### Multi-language 지원 및 빠른 데이터 교환
-
-![Serialization](/assets/images/2025-04-26-apache-arrow-and-datafusion/serialization.png){: width="500" style="display:block; margin-left:auto; margin-right:auto"}
-
-{:refdef: style="text-align: center;"}
-*Serialization 예시 ([출처](https://en.wikipedia.org/wiki/Serialization))* 
-{: refdef}
-
-데이터 직렬화(serialization)은 데이터 저장이나 전송을 위해 자료구조나 객체, 상태 등을 특정 포멧으로 변환하는 것입니다(위의 그림 참고). 서로 다른 프로세스나 시스템이 서로 데이터를 교환하기 위해서는 서로 이해할 수 있는 공통의 형태가 필요합니다. 이것을 위해 데이터 직렬화를 하는 것입니다. Apache Arrow는 이런 데이터 직렬화를 통해 이종 시스템간의 데이터를 교환하는 데 쓰입니다. 예를들어 Python에서 Pandas를 이용하여 DataFrame을 생성하고 이를 Spark로 옮겨 처리하고 싶을 때, Apache Arrow를 사용하면 간편하게 데이터를 옮길 수 있습니다.
 
 Apache Arrow는 **Zero-copy 데이터 교환**을 통해 데이터를 굉장히 빠르게 옮길 수 있습니다. Zero-copy 데이터 교환이란 데이터를 교환할 때 데이터의 복사를 전혀 하지 않는다는 의미입니다. 우리가 데이터를 특정 프로세스에서 다른 프로세스로 옮기고자 할 때 사용할 수 있는 간편한 방법이 몇가지 있습니다. 데이터를 파일에 쓴 뒤 다른 프로세스에서 읽거나, 통신채널을 열어 데이터를 옮기는 방법이 있습니다. 하지만 이들은 하나의 프로세스가 사용하는 메모리에서 데이터를 disk 혹은 네트워크로 옮기고, 이를 다시 다른 프로세스의 메모리에서 읽어들어야 하는 과정을 수반합니다. 즉, 프로세스의 메모리에서 다른 프로세스의 메모리로 데이터가 copy(복사)되는 것이지요. 데이터의 사이즈가 작을 때에는 이것이 문제되지 않지만, 대규모 데이터 분석과 같이 데이터의 사이즈가 커짐에 따라 데이터 복사에서 발생하는 시간이나 메모리 사용은 궁극적으로 성능 하락으로 이루어질 수 있습니다.
 
@@ -71,7 +63,7 @@ Apache Arrow는 데이터 교환뿐 아니라 빠른 인메모리 분석 도구�
 
 Columnar format은 테이블 데이터를 저장하는 방법 중 하나입니다. 전통적인 RDBMS는 테이블 데이터를 row oriented(행 기반) format으로 관리하였습니다. 예를들어 `Student(sid INTEGER, name STRING, age INTEGER)`라는 테이블이 있다고 가정해 보겠습니다. Row oriented format의 경우 물리적으로 데이터를 `1,구교승,29$2,배정모,29$3,서정범,30$4,배현모,31`과 같은 식으로 각 행에 대한 정보를 연속된 공간에 저장합니다(`,`는 열의 구분을, `$`은 행의 구분을 위해 사용되었습니다). 반면 column oriented format의 경우 물리적으로 데이터를 `1,2,3,4$구교승,배정모,서정범,배현모$29,29,30,31`과 같이 각 열에 대한 정보를 연속된 공간에 저장합니다(`,`는 행의 구분을, `$`은 열의 구분을 위해 사용되었습니다).
 
-그렇다면 왜 columnar format을 사용할까요? Columnar format은 분석 쿼리(Online Analytic Processing; OLAP이라고 불리기도 합니다)를 잘 처리하기 위해 사용됩니다. 분석 쿼리는 대부분 단일 행을 접근하는 것보다는 여러 행을 접근하여 집계를 하는 동작을 수행합니다. `SELECT SUM(age) FROM Student`라는 쿼리가 분석 쿼리의 간단한 예시가 될 수 있겠습니다. 이것을 row oriented format으로 처리한다고 가정해 보겠습니다 (이전 단락의 예시와 함께 보세요). DBMS는 물리적으로 저장된 데이터를 읽어드린 뒤에 각 행별로 가장 마지막 column `age`를 찾아가 읽어내야 합니다. 그 뒤에 이 값들을 합산하겠지요. 반면 column oriented format으로 처리한다고 생각해 보겠습니다. DBMS는 특정 열를 찾은 뒤에 연속적으로 저장되어 있는 `age`값을 한번에 읽어들이기만 하면 됩니다. 이러한 접근 방식의 차이점은 storage의 sequential I/O를 더 적극적으로 활용할 수 있고(연속된 `age`값을 읽으면 되기 때문에), CPU의 caching 측면에서도 유리하게 작용합니다. 궁극적으로 성능상 이득이 있는 것이지요.
+그렇다면 왜 columnar format을 사용할까요? Columnar format은 분석 쿼리를 잘 처리하기 위해 사용됩니다. 분석 쿼리는 대부분 단일 행을 접근하는 것보다는 여러 행을 접근하여 집계를 하는 동작을 수행합니다. `SELECT SUM(age) FROM Student`라는 쿼리가 분석 쿼리의 간단한 예시가 될 수 있겠습니다. 이것을 row oriented format으로 처리한다고 가정해 보겠습니다 (이전 단락의 예시와 함께 보세요). DBMS는 물리적으로 저장된 데이터를 읽어드린 뒤에 각 행별로 가장 마지막 column `age`를 찾아가 읽어내야 합니다. 그 뒤에 이 값들을 합산하겠지요. 반면 column oriented format으로 처리한다고 생각해 보겠습니다. DBMS는 특정 열를 찾은 뒤에 연속적으로 저장되어 있는 `age`값을 한번에 읽어들이기만 하면 됩니다. 이러한 접근 방식의 차이점은 storage의 sequential I/O를 더 적극적으로 활용할 수 있고(연속된 `age`값을 읽으면 되기 때문에), CPU의 caching 측면에서도 유리하게 작용합니다. 궁극적으로 성능상 이득이 있는 것이지요.
 
 더 나아가 vectorized execution도 column format이 유리한 조건을 만들어 냅니다. 요즘 CPU는 효율적인 vector processing을 위한 Single Instruction Multiple Data(SIMD) 연산을 지원합니다. Columnar format은 함께 처리해야 하는 데이터가 이미 연속된 공간에 존재하기 때문에(`age` 열의 값이 `29,29,30,31`과 같이 연속된 공간에 저장), 이러한 SIMD 연산을 위한 최적의 상태에 있습니다. 만약 행 기반의 데이터였다면 loop을 통해 최소 4개 이상의 instruction이 필요했겠지만, SIMD 연산으로는 하나면 충분합니다.
 
@@ -88,7 +80,9 @@ Apache Arrow는 이런 columnar format의 장점을 극대화합니다. Apache A
 
 Apache DataFusion은 **Apache Arrow를 인메모리 포멧**으로 사용하는 **확장성** 있는 **쿼리 엔진**입니다. 즉, columnar format을 기반으로 SQL 질의를 처리하는 엔진이며 이것의 확장성이 좋다는 의미이겠지요. 많은 사용자들은 DataFusion을 자신의 프로세스에 임베딩하여 SQL 혹은 DataFrame engine으로 사용합니다.
 
-DataFusion의 주장 중 하나는 "새로운 DBMS들은 잘 개발된 오픈소스 엔진을 사용해 개발되어야 한다" 입니다([출처](https://docs.google.com/presentation/d/1D3GDVas-8y0sA4c8EOgdCvEjVND4s2E7I6zfs67Y4j8/edit#slide=id.g22007bd2b6f_0_343)). "바퀴를 재발명하지 말자"와 같은 말이죠. 전통적인 관점에서 DBMS를 만들고자 할 때 storage engine이나 query engine 등을 일일히 설계하고 만들어야 했습니다. 이에 따라 MySQL과 Postgres와 같은 시스템들은 제각각 다른 구성을 가지고 있죠. DataFusion은 새로운 DBMS를 만들 때 처음부터 만들지 말고, DataFusion과 같이 잘 구성된 시스템을 모듈 형식으로 가져가 쓰자고 제안합니다. 그 뒤에 개발하고자 하는 DBMS 특징에 맞게 기능을 추가하거나 코드를 수정하자고 말하죠.
+DataFusion는 새로운 DBMS를 구축할 때 고품질의 오픈소스 쿼리 엔진을 활용하는 것이 미래의 트렌드가 될 것이라고 제시하고 있습니다 ([출처](https://docs.google.com/presentation/d/1D3GDVas-8y0sA4c8EOgdCvEjVND4s2E7I6zfs67Y4j8/edit#slide=id.g22007bd2b6f_0_343)).
+전통적으로 각 데이터베이스 시스템이 자체적인 쿼리 엔진을 개발해왔지만 (예를들어 MySQL과 Postgres와 같은 시스템들은 제각각 다른 구성을 가지고 있죠), 이는 구축과 유지보수에 많은 비용이 든다고 분석하고 있습니다.  DataFusion은 새로운 DBMS를 만들 때 처음부터 만들지 말고, DataFusion과 같이 잘 구성된 시스템을 모듈 형식으로 가져가 쓰자고 제안합니다.
+그 뒤에 개발하고자 하는 DBMS 특징에 맞게 기능을 추가하거나 코드를 수정하자고 말하죠.
 
 그런 이유인지 DataFusion은 전통적인 DBMS와 매우 유사하게 구성되어 있습니다. 이번 장에서는 어떤 식으로 DataFusion 쿼리 엔진이 구성되어 있고, 어떻게 확장성이 좋은지에 대해서 알아보도록 하겠습니다.
 
@@ -100,7 +94,7 @@ DataFusion의 주장 중 하나는 "새로운 DBMS들은 잘 개발된 오픈소
 *DataFusion 개요 ([출처](https://docs.google.com/presentation/d/1D3GDVas-8y0sA4c8EOgdCvEjVND4s2E7I6zfs67Y4j8/edit#slide=id.p))* 
 {: refdef}
 
-위 그림은 DataFusion의 구성도를 표현하고 있습니다. 좌측 상단에 있는 것은 Data Sources로, 우리가 맨 처음 살펴본 DBMS 구성에서 Storage Engine이 읽고 쓰는 데이터의 원천입니다. 좌측 하단에 있는 것은 Query FrontEnds로 사용자가 SQL과 DataFrame을 이용하여 DataFusion에 쿼리를 할 수 있다는 것을 의미합니다. 그림의 중앙부에는 LogicalPlans과 ExecutionPlan으로 이루어진 Plan Representations가 배치되어 있습니다. 이것은 DBMS 설명에서 논의한 logical plan(논리 계획)과 physical plan(물리 계획)과 동일한 것입니다. 우측에 있는 것은 Optimized Execution Operators로 LogicalPlans과 ExecutionPlan에 포함된 연산자(operator)를 의미합니다.
+위 그림은 DataFusion의 구성도를 표현하고 있습니다. 좌측 상단에 있는 것은 Data Sources로, 우리가 맨 처음 살펴본 DBMS 구성에서 Storage Engine이 읽고 쓰는 데이터의 원천입니다. 좌측 하단은 사용자가 SQL과 DataFrame을 이용하여 DataFusion에 쿼리를 할 수 있다는 것을 의미합니다. 그림의 중앙부에는 LogicalPlans과 ExecutionPlan으로 이루어진 Plan Representations가 배치되어 있습니다. 이것은 DBMS 설명에서 논의한 logical plan(논리 계획)과 physical plan(물리 계획)과 동일한 것입니다. 우측에 있는 것은 Optimized Execution Operators로 ExecutionPlan에 포함되어 실행될 수 있는 연산자(operator)를 의미합니다.
 
 그림에서 알 수 있듯이, DataFusion은 DBMS의 쿼리엔진이 하는 것과 동일한 일을 하고 있습니다. FrontEnds로부터 입력된 쿼리를 가공하여 logical plan을 만들고, 이것은 변환(Transformation) 혹은 최적화(Optimization)을 통해 더 나은 logical plan으로 변환됩니다. DataFusion은 생성된 plan을 실제로 어떻게 실행할지를 나타내는 execution plan으로 변환합니다. 이 과정에서 위와 유사하게 변환과 최적화를 수행하게 됩니다. 이후에 Arrow를 기반으로 작성된 연산자를 이용하여 execution plan을 실행합니다.
 
@@ -143,9 +137,10 @@ Vectorized processing은 이전 장에서 설명한 것처럼 SIMD 연산과 궁
 *DataFusion Data Partitioning ([출처](https://docs.google.com/presentation/d/1cA2WQJ2qg6tx6y4Wf8FH2WVSm9JQ5UgmBWATHdik0hg/edit#slide=id.g209d99697c0_0_11))* 
 {: refdef}
 
-DataFusion 맥락에서 partitioning은 데이터를 특정한 기준에 맞게 물리적으로 그룹화 하는 것을 의미합니다. DataFusion은 위의 그림과 같이 데이터를 partition으로 쪼갠 뒤에, data-parallel 한 방식을 이용하여 쿼리를 수행합니다.
+DBMS 맥락에서 partitioning은 데이터를 특정한 기준에 맞게 물리적으로 그룹화 하는 것을 의미합니다. DataFusion은 위의 그림과 같이 데이터를 partition으로 쪼갠 뒤에, data-parallel 한 방식을 이용하여 쿼리를 수행합니다.
 
-여기까지 DataFusion에 대해서 알아보았습니다. DataFusion은 확장성을 키워드로 내세우고 있습니다. 기술적인 특징은 없는 듯 하지만 사용자에게 매우 유용할 수 있기에 더 읽어볼 거리에 관련 링크를 추가합니다.
+여기까지 DataFusion에 대해서 알아보았습니다.
+독자들에게 유용할 수 있을 링크를 더 읽어볼 거리에 추가하였으니 기회가 된다면 살펴보시기 바랍니다.
 
 ### 더 읽어볼 거리
 
