@@ -5,13 +5,13 @@ date:   2025-05-18 19:30:00 +0900
 categories: dbms
 ---
 
-*이 글은 제가 2025년 5월 18일에 진행한 "Topics in Apache Parquet and OpenDAL" 세미나 내용을 기반으로 작성되었습니다.*
+*이 글은 제가 2025년 5월 18일에 진행한 "Databend 세미나: Topics in Apache Parquet and OpenDAL" 세미나 내용을 기반으로 작성되었습니다.*
 
 ---
 
 ## Apache Parquet
 
-Apache Parquet는 효율적인 데이터 관리와 검색을 위한 오픈소스 열기반 데이터 파일 포맷입니다[1].
+Apache Parquet는 효율적인 데이터 관리와 검색을 위한 오픈소스 열기반 데이터 파일 포맷입니다 [1].
 Hadoop ecosystem에 최적화된 열기반 데이터 표현을 제공하기 위해 시작되었습니다.
 Parquet의 대표적인 특징으로는 열기반 스토리지, 압축, 최적화된 쿼리 프로세싱이 있습니다.
 여기에서는 기술적으로 흥미로운 주제들인 열기반 스토리지와 최적화된 쿼리 프로세싱에 대해서 알아보겠습니다.
@@ -21,7 +21,7 @@ Parquet의 대표적인 특징으로는 열기반 스토리지, 압축, 최적�
 ![Parquet File Layout](/assets/images/2025-05-18-apache-parquet-and-opendal/parquet-file-layout.png){: width="400" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Parquet 파일의 내부 구조[1]* 
+*Parquet 파일의 내부 구조 [1]* 
 {: refdef}
 
 위 그림은 Parquet 파일 하나의 구성을 나타냅니다.
@@ -31,11 +31,11 @@ Parquet의 대표적인 특징으로는 열기반 스토리지, 압축, 최적�
 하나의 column chunk는 하나의 열(column)에 해당하고, 이것은 여러 개의 페이지로 구성되어 있습니다.
 각각의 페이지는 페이지의 정보를 나타내는 페이지 헤더(메타데이터)와 nested 데이터(e.g., JSON, Protobuf, etc.)를 관리하기 위한 repetition levels 및 definition levels (이에 대해서는 이후에 다룹니다), 그리고 실제 데이터를 관리합니다.
 
-메타데이터는 Thrift Protocol[2]로 정의되어 있습니다.
+메타데이터는 Thrift Protocol [2]로 정의되어 있습니다.
 파일의 가장 끝부분에 위치한 파일 메타데이터는 스키마 정보, 각 row group의 정보 (데이터의 위치, 압축 방식 등) 등을 저장합니다.
 
-이런 식으로 데이터를 row group과 column chunk로 나누어 저장하는 방식을 PAX(Partition Attributes Across)라고 합니다[3].
-DuckDB의 storage format도 유사한 방식으로 구성되어 있습니다[6].
+이런 식으로 데이터를 row group과 column chunk로 나누어 저장하는 방식을 PAX(Partition Attributes Across)라고 합니다.
+DuckDB의 storage format도 유사한 방식으로 구성되어 있습니다 [6].
 
 ### 최적화된 쿼리 프로세싱
 
@@ -53,22 +53,31 @@ Parquet는 각각의 row group 내에 있는 column chunk마다 데이터의 min
 ![Dictionary Encoding](/assets/images/2025-05-18-apache-parquet-and-opendal/dictionary.png){: width="200" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Dictionary encoding을 통한 데이터 압축[3]* 
+*Dictionary encoding 예시 [3]* 
 {: refdef}
 
-*Dictionary encoding*은 자주 나타나는 값을 좀 더 작은 code로 변환하여 저장하고, 필요할 때 그 매핑(dictionary)을 사용하여 값을 되찾는 방법입니다.
-위 그림은 dictionary encoding의 이득을 보여주는 예시를 묘사합니다.
+*Dictionary encoding*은 데이터에서 자주 나타나는 값을 dictionary에 저장하고, 데이터는 좀 더 작은 code(예를들어 정수값)로 표현하는 방법입니다.
+이 방법은 데이터 압축 측면에서도 좋고, 문자열과 같이 크기가 큰 데이터에 대한 query processing 할 때 유용합니다. 
+전체 문자열에 대해 연산을 수행할 필요 없이, code를 이용하여 연산을 수행할 수 있기 때문입니다.
+물론 원본 값이 필요할 때에는 그 code에 해당하는 값을 dictionary를 통해 되찾습니다.
+
+대체로 두가지 방식의 code가 사용됩니다. 
+하나는 dictionary에 각 데이터 값과 이에 대한 길이를 저장하고, 원본 데이터가 dictionary 내에서 몇번째 index에 저장되어 있는지를 code로 사용하는 방법입니다.
+다른 하나는 dictionary에 데이터 값을 연속된 위치에 저장하고, dictionary 내에서 원본 데이터가 몇번째 offset에 저장되어 있는지를 code로 사용하는 방법입니다.
+위 그림은 dictionary encoding을 이용하여 문자열을 저장할 때의 이득을 보여주는 예시입니다.
+위쪽에는 dictionary가 있고, 왼쪽 아래에는 첫번째 방식의 code, 오른쪽 아래에는 두번째 방식의 code를 이용하여 encoding 한 결과를 보여줍니다.
 문자열을 그대로 데이터로 저장한다면 많은 공간을 차지할 수 있지만, 그림과 같이 인코딩하여 관리하면 더 적은 공간으로 처리할 수 있습니다.
 
-Parquet는 dictionary encoding에 더해 *run-length encoding*과 *bitpacking encoding*을 사용합니다.
+Parquet는 *run-length encoding*과 *bitpacking encoding*을 dictionary encoding와 함께 사용합니다.
+이를 통해 데이터를 추가적으로 압축하여 더욱 효율적인 저장 공간을 확보할 수 있습니다.
 Run-length encoding은 반복된 값이 포함된 데이터를 값과 중복된 횟수의 쌍으로 변환합니다.
 예를 들어 [1,1,2,2,2,2,3,3]과 같은 데이터가 있을 때 run-length encoding의 결과는 [(1,2),(2,4),(3,2)]가 됩니다.
 
-다른 인코딩 방법 중 하나인 bitpacking encoding은 정수 데이터를 저장할 때 필요한 최소한의 비트만을 사용하여 저장하는 인코딩 방식입니다.
-우리가 데이터를 32비트 integer로 표현한다고 하더라도, 항상 32비트를 꽉 채워서 사용하는 것은 아닙니다.
+다른 인코딩 방법 중 하나인 bitpacking encoding은 데이터를 저장할 때 필요한 최소한의 비트만을 사용하여 저장하는 인코딩 방식입니다.
+우리가 데이터를 32비트 integer로 표현한다고 할 때, 항상 32비트를 꽉 채워서 사용하는 것은 아닙니다.
 만약 우리가 이 데이터의 도메인을 알고 있다면(e.g., int32 타입의 column chunk에 있는 데이터가 0-1000 범위를 가진다면), 우리는 이 정보를 바탕으로 사용하는 비트의 수를 줄일 수 있습니다(e.g., 2¹⁰=1024로 충분히 커버가 가능하므로 10비트+α 로 표현 가능).
 
-Run-length encoding과 bitpacking encoding은 dictionary encoding 없이 데이터에 대해 단독으로 적용될 수 있습니다.
+Run-length encoding과 bitpacking encoding은 dictionary encoding 없이 데이터에 대해 단독으로 적용될 수도 있습니다.
 
 Parquet는 low cardinality(i.e., distinct한 값의 개수가 적은 경우) 상황일 때 dictionary encoding을 사용합니다.
 하나의 열에 같은 값이 많은 경우가 이에 해당하는데, 이 때는 dictionary encoding이 효과적일 것입니다.
@@ -77,7 +86,7 @@ Parquet는 low cardinality(i.e., distinct한 값의 개수가 적은 경우) 상
 
 위에서 살펴본 zone map이나 dictionary encoding이 효과가 없는 경우가 있을 수 있습니다. 데이터가 large cardinality를 가지면서 매우 skewed 되어 있을 수 있습니다. 그렇다면 이런 경우에는 빠른 스캔을 어떻게 만들어 낼 수 있을까요?
 
-Parquet는 이러한 경우 *bloom filter*[8]를 사용합니다.
+Parquet는 이러한 경우 *bloom filter* [8]를 사용합니다.
 Bloom filter는 특정 원소가 집합에 포함되어 있는지 여부를 확률적으로 판단하는 자료구조입니다.
 이것이 "No"를 반환한다면 데이터가 확실히 없는 것이고, "Yes"를 반환한다면 데이터가 있을 수도 있고, 없을 수도 있습니다(False Positive).
 Bloom filter는 적은 양의 메모리(데이터 개수 N보다 작은 bits)를 이용하여 "Yes" 혹은 "No" 질의를 빠르게 처리할 수 있습니다.
@@ -86,12 +95,12 @@ Bloom filter는 적은 양의 메모리(데이터 개수 N보다 작은 bits)를
 
 ### Nested Data
 
-Parquet는 설계 단계에서부터 nested 데이터를 고려하였습니다[1]. Nested 데이터를 저장 및 관리하기 위해 **Dremel(Google BigQuery)**[9][10]에서 사용한 방법을 채택하였습니다.
+Parquet는 설계 단계에서부터 nested 데이터를 고려하였습니다 [1]. Nested 데이터를 저장 및 관리하기 위해 **Dremel(Google BigQuery)** [9][10]에서 사용한 방법을 채택하였습니다.
 
 ![Dremel Nested Concept](/assets/images/2025-05-18-apache-parquet-and-opendal/dremel-nested-concept.png){: width="500" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Dremel의 nested 데이터 관리 개념[9]* 
+*Dremel의 nested 데이터 관리 개념 [9]* 
 {: refdef}
 
 위 그림은 Dremel이 nested 데이터를 관리하는 방법을 개념적으로 나타낸 것입니다.
@@ -102,7 +111,7 @@ Parquet는 설계 단계에서부터 nested 데이터를 고려하였습니다[1
 ![Dremel Nested Method](/assets/images/2025-05-18-apache-parquet-and-opendal/dremel-nested-method.png){: width="650" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Dremel의 구체적인 nested 데이터 관리 방법[10]* 
+*Dremel의 구체적인 nested 데이터 관리 방법 [10]* 
 {: refdef}
 
 위 그림은 구체적으로 데이터를 어떻게 관리하는지 나타냅니다.
@@ -129,10 +138,10 @@ One layer, all storage를 표방하고 있습니다.
 OpenDAL에는 Service, Layer, 그리고 Operator 컴포넌트가 있습니다.
 
 - Service는 storage backend를 지정하는 컴포넌트입니다.
-    AWS S3나 Azure Blob(Azblob)과 같이 bucket service 뿐 아니라 POSIX file system(Fs), PostgreSQL이나 MongoDB 등의 database 접근을 위한 서비스를 제공합니다[5].
+    AWS S3나 Azure Blob(Azblob)과 같이 bucket service 뿐 아니라 POSIX file system(Fs), PostgreSQL이나 MongoDB 등의 database 접근을 위한 서비스를 제공합니다 [5].
     
 - Layer는 데이터를 접근할 때 사용할 수 있는 부가적인 기능을 제공합니다.
-    데이터에 대한 연산 수행 시 logging을 해주는 `LoggingLayer`나 연산 실패 시 자동으로 retry를 수행해주는 `RetryLayer`, timeout을 설정해주는 `TimeoutLayer` 등을 제공합니다[7].
+    데이터에 대한 연산 수행 시 logging을 해주는 `LoggingLayer`나 연산 실패 시 자동으로 retry를 수행해주는 `RetryLayer`, timeout을 설정해주는 `TimeoutLayer` 등을 제공합니다 [7].
     
 - Operator는 Service에서 지정된 storage에 접근할 수 있도록 합니다.
     Read, write, stat, delete, create\_dir, copy 등의 연산을 제공합니다.
@@ -150,14 +159,14 @@ DataBend는 Fuse Engine을 스토리지 엔진으로 사용하며, OpenDAL을 �
 ![Fuse Engine](/assets/images/2025-05-18-apache-parquet-and-opendal/fuse.png){: width="600" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Fuse Engine의 테이블 관리 메커니즘[4]* 
+*Fuse Engine의 테이블 관리 메커니즘 [4]* 
 {: refdef}
 
 위 그림은 Fuse Engine이 하나의 테이블을 관리하는 메커니즘을 표현합니다.
 Fuse Engine은 하나의 테이블을 3가지 요소를 통해 관리합니다.
 
 - Block: 실제 데이터 조각입니다. Parquet 파일로 구성되어 있습니다.
-- Segment: Block들과 이것들의 메타데이터 입니다. 예를 들어 몇 개의 행을 가지고 있는지, 데이터의 사이즈가 어느 정도인지 등을 나타냅s니다.
+- Segment: Block들과 이것들의 메타데이터 입니다. 예를 들어 몇 개의 행을 가지고 있는지, 데이터의 사이즈가 어느 정도인지 등을 나타냅니다.
 - Snapshot: 특정 시점의 테이블의 상태를 나타내며, Segment들을 가리킵니다.
 
 테이블이 업데이트(레코드 삽입, 삭제, 수정)될 때마다 새로운 Snapshot이 만들어집니다.

@@ -5,27 +5,28 @@ date:   2025-05-18 19:30:00 +0900
 categories: dbms
 ---
 
-*This article is based on my seminar "Topics in Apache Parquet and OpenDAL" presented on May 18, 2025.*
+*This post is a translated version of [the blog post]({% post_url 2025-05-18-apache-parquet-and-opendal-ko %}) originally written in Korean.
+This article is based on my seminar "Databend Seminar: Topics in Apache Parquet and OpenDAL" presented on May 18, 2025.*
 
 ---
 
 ## Apache Parquet
 
-Apache Parquet is an open-source column-oriented data file format for efficient data management and retrieval[1]. It was started to provide column-oriented data representation optimized for the Hadoop ecosystem. Parquet's key characteristics include column-oriented storage, compression, and optimized query processing. Here, we'll explore the technically interesting topics of column-oriented storage and optimized query processing.
+Apache Parquet is an open-source column-oriented data file format for efficient data management and retrieval [1]. It was started to provide column-oriented data representation optimized for the Hadoop ecosystem. Parquet's key characteristics include column-oriented storage, compression, and optimized query processing. Here, we'll explore the technically interesting topics of column-oriented storage and optimized query processing.
 
 ### Column-Oriented Storage
 
 ![Parquet File Layout](/assets/images/2025-05-18-apache-parquet-and-opendal/parquet-file-layout.png){: width="400" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Internal Structure of a Parquet File[1]* 
+*Internal Structure of a Parquet File [1]* 
 {: refdef}
 
 The above diagram shows the structure of a single Parquet file. One Parquet file contains one table's data. The file has data areas and metadata areas. The data area consists of consecutive row groups, and each row group contains data for a specific number of records (tuples) stored as column chunks. One column chunk corresponds to one column, and it consists of multiple pages. Each page manages page headers (metadata) that represent page information, repetition levels and definition levels for managing nested data (e.g., JSON, Protobuf, etc.) (we'll cover this later), and actual data.
 
-The metadata is defined using Thrift Protocol[2]. The file metadata located at the very end of the file stores schema information, information about each row group (data location, compression method, etc.).
+The metadata is defined using Thrift Protocol [2]. The file metadata located at the very end of the file stores schema information, information about each row group (data location, compression method, etc.).
 
-This method of storing data divided into row groups and column chunks is called PAX (Partition Attributes Across)[3]. DuckDB's storage format is also structured in a similar way[6].
+This method of storing data divided into row groups and column chunks is called PAX (Partition Attributes Across). DuckDB's storage format is also structured in a similar way [6].
 
 ### Optimized Query Processing
 
@@ -42,14 +43,27 @@ Depending on the sorting state of data, the effectiveness of zone maps can be ve
 ![Dictionary Encoding](/assets/images/2025-05-18-apache-parquet-and-opendal/dictionary.png){: width="200" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Data Compression through Dictionary Encoding[3]* 
+*Dictionary encoding example [3]* 
 {: refdef}
 
-*Dictionary encoding* is a method of converting frequently appearing values to smaller codes for storage, then using the mapping (dictionary) to retrieve values when needed. The above diagram shows an example of dictionary encoding benefits. If strings were stored as data directly, they could take up a lot of space, but by encoding and managing them as shown in the diagram, they can be processed with less space.
+*Dictionary encoding* is a method that stores frequently appearing values in a dictionary and represents data with smaller codes (e.g., integer values).
+This method is good from a data compression perspective and useful for query processing on large-sized data such as strings.
+This is because operations can be performed using codes without needing to operate on entire strings.
+Of course, when the original value is needed, the corresponding value is retrieved through the dictionary using the code.
 
-In addition to dictionary encoding, Parquet uses *run-length encoding* and *bitpacking encoding*. Run-length encoding converts data containing repeated values into pairs of values and repetition counts. For example, with data like [1,1,2,2,2,2,3,3], the run-length encoding result would be [(1,2),(2,4),(3,2)].
+Generally, two types of codes are used.
+One method stores each data value and its length in the dictionary, and uses which index the original data is stored at in the dictionary as the code.
+The other method stores data values in consecutive positions in the dictionary, and uses which offset the original data is stored at within the dictionary as the code.
+The above diagram shows an example of the benefits when storing strings using dictionary encoding.
+The top shows the dictionary, the bottom left shows the encoding result using the first method's code, and the bottom right shows the encoding result using the second method's code.
+If strings were stored as data directly, they could take up a lot of space, but by encoding and managing them as shown in the diagram, they can be processed with less space.
 
-Another encoding method, bitpacking encoding, is an encoding method that uses only the minimum bits needed when storing integer data. Even though we represent data as 32-bit integers, we don't always use all 32 bits. If we know the domain of this data (e.g., if data in an int32 type column chunk has a range of 0-1000), we can reduce the number of bits used based on this information (e.g., since 2¹⁰=1024 provides sufficient coverage, it can be represented with 10 bits+α).
+Parquet uses *run-length encoding* and *bitpacking encoding* together with dictionary encoding.
+This allows for additional compression of data to achieve even more efficient storage space.
+Run-length encoding converts data containing repeated values into pairs of values and repetition counts.
+For example, with data like [1,1,2,2,2,2,3,3], the run-length encoding result would be [(1,2),(2,4),(3,2)].
+
+Another encoding method, bitpacking encoding, is an encoding method that uses only the minimum bits needed when storing data. Even though we represent data as 32-bit integers, we don't always use all 32 bits. If we know the domain of this data (e.g., if data in an int32 type column chunk has a range of 0-1000), we can reduce the number of bits used based on this information (e.g., since 2¹⁰=1024 provides sufficient coverage, it can be represented with 10 bits+α).
 
 Run-length encoding and bitpacking encoding can be applied to data independently without dictionary encoding.
 
@@ -59,16 +73,16 @@ Parquet uses dictionary encoding in low cardinality situations (i.e., when there
 
 There may be cases where the zone maps or dictionary encoding explored above are ineffective. Data might have large cardinality while being very skewed. So how can we create fast scans in such cases?
 
-Parquet uses *bloom filters*[8] for such cases. A bloom filter is a data structure that probabilistically determines whether a specific element is included in a set. If it returns "No," the data is definitely not there, and if it returns "Yes," the data may or may not be there (False Positive). Bloom filters can quickly process "Yes" or "No" queries using a small amount of memory (fewer bits than the number of data items N). When storing data, Parquet creates bloom filters, and when we search for data, we use these bloom filters. If the bloom filter returns "Yes," we scan the corresponding column chunk; if it returns "No," we skip that data.
+Parquet uses *bloom filters* [8] for such cases. A bloom filter is a data structure that probabilistically determines whether a specific element is included in a set. If it returns "No," the data is definitely not there, and if it returns "Yes," the data may or may not be there (False Positive). Bloom filters can quickly process "Yes" or "No" queries using a small amount of memory (fewer bits than the number of data items N). When storing data, Parquet creates bloom filters, and when we search for data, we use these bloom filters. If the bloom filter returns "Yes," we scan the corresponding column chunk; if it returns "No," we skip that data.
 
 ### Nested Data
 
-Parquet considered nested data from the design stage[1]. To store and manage nested data, it adopted the method used by **Dremel (Google BigQuery)**[9][10].
+Parquet considered nested data from the design stage [1]. To store and manage nested data, it adopted the method used by **Dremel (Google BigQuery)** [9][10].
 
 ![Dremel Nested Concept](/assets/images/2025-05-18-apache-parquet-and-opendal/dremel-nested-concept.png){: width="500" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Dremel's Nested Data Management Concept[9]* 
+*Dremel's Nested Data Management Concept [9]* 
 {: refdef}
 
 The above diagram conceptually shows how Dremel manages nested data. Like the tree structure on the right, object A contains repeatable or optional objects B, ..., E, and object B contains object C and repeatable or optional object D.
@@ -78,12 +92,13 @@ When managing such objects, if we stored data as it appears, information about e
 ![Dremel Nested Method](/assets/images/2025-05-18-apache-parquet-and-opendal/dremel-nested-method.png){: width="650" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Dremel's Specific Nested Data Management Method[10]* 
+*Dremel's Specific Nested Data Management Method [10]* 
 {: refdef}
 
 The above diagram shows specifically how data is managed. On the left side of the diagram are the protobuf schema and example records r₁ and r₂. Dremel creates separate tables for each path in the schema as shown on the right side of the diagram.
 
-These tables record values for the corresponding fields, repetition levels, and definition levels together. Repetition levels record at which depth in the path field repetition occurred when comparing the current tuple with the previous tuple, and definition levels record how many optional fields among the defined paths in the current tuple were actually defined.
+These tables record values for the corresponding fields, repetition levels, and definition levels together.
+Repetition levels record at which depth in the path field repetition occurred when comparing the current tuple with the previous tuple, and definition levels record how many optional fields in the paths were actually defined.
 
 When storing nested objects, Dremel splits paths as described above and records values, repetition levels, and definition levels. When data needs to be processed, it uses this information to understand what the original data looked like and processes the data.
 
@@ -100,9 +115,9 @@ OpenDAL is a data access layer that can communicate seamlessly with various stor
 
 OpenDAL has Service, Layer, and Operator components.
 
-- Service is a component that specifies storage backends. It provides services for bucket services like AWS S3 and Azure Blob (Azblob), as well as POSIX file systems (Fs) and database access services like PostgreSQL and MongoDB[5].
+- Service is a component that specifies storage backends. It provides services for bucket services like AWS S3 and Azure Blob (Azblob), as well as POSIX file systems (Fs) and database access services like PostgreSQL and MongoDB [5].
     
-- Layer provides additional functionality that can be used when accessing data. It provides `LoggingLayer` for logging during data operations, `RetryLayer` for automatic retries on operation failures, `TimeoutLayer` for setting timeouts, etc.[7]
+- Layer provides additional functionality that can be used when accessing data. It provides `LoggingLayer` for logging during data operations, `RetryLayer` for automatic retries on operation failures, `TimeoutLayer` for setting timeouts, etc. [7]
     
 - Operator enables access to storage specified in Service. It provides operations like read, write, stat, delete, create_dir, copy. We can create, modify, or delete data through these operations.
 
@@ -117,7 +132,7 @@ DataBend uses Fuse Engine as its storage engine and OpenDAL as its data access l
 ![Fuse Engine](/assets/images/2025-05-18-apache-parquet-and-opendal/fuse.png){: width="600" style="display:block; margin-left:auto; margin-right:auto"}
 
 {:refdef: style="text-align: center;"}
-*Fuse Engine's Table Management Mechanism[4]* 
+*Fuse Engine's Table Management Mechanism [4]* 
 {: refdef}
 
 The above diagram represents the mechanism by which Fuse Engine manages a single table. Fuse Engine manages one table through three elements:

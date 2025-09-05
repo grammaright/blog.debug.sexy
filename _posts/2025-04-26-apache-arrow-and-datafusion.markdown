@@ -5,7 +5,8 @@ date:   2025-04-26 18:00:00 +0900
 categories: dbms
 ---
 
-*This article is based on my seminar "Technical Features of Apache Arrow and DataFusion and their Relationship with Database Systems" presented on April 26, 2025.*
+*This post is a translated version of [the blog post]({% post_url 2025-04-26-apache-arrow-and-datafusion-ko %}) originally written in Korean.
+This article is based on my seminar "Databend Seminar: Technical Features of Apache Arrow and DataFusion and their Relationship with Database Systems" presented on April 26, 2025.*
 
 ---
 
