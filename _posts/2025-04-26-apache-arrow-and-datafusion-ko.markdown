@@ -21,15 +21,17 @@ categories: dbms
 *DBMS 구성도 개요 ([출처](https://www.oreilly.com/library/view/database-internals/9781492040330/ch01.html))* 
 {: refdef}
 
-위 그림은 DBMS의 일반적인 아키텍쳐에 대한 이미지입니다. 가장 위의 Transport layer는 클라이언트 프로그램(예: `psql`, `mysql` 커맨드 프로그램 등)이나 다른 DBMS와의 통신을 담당합니다. Transport layer, Query Processor, Execution Engine, Storage Engine을 포함하여 하나의 DBMS라고 혹은 하나의 인스턴스라고 통상 부릅니다.
+위 그림은 DBMS의 일반적인 아키텍쳐에 대한 이미지입니다.
+Transport layer, Query Processor, Execution Engine, Storage Engine을 포함하여 하나의 DBMS라고 혹은 하나의 인스턴스라고 통상 부릅니다.
 
+가장 위의 Transport layer는 클라이언트 프로그램(예: `psql`, `mysql` 커맨드 프로그램 등)이나 다른 DBMS와의 통신을 담당합니다.
 사용자가 클라이언트 프로그램을 통해 쿼리(query 또는 질의)를 입력하면, 해당 쿼리는 DBMS의 Query Processor로 전달됩니다. 관계형 데이터베이스 관리 시스템(Relational Database Management System, 줄여서 RDBMS)의 경우, 통상 Structured Query Language(SQL)을 통해 쿼리를 표현하고, 사용자는 이를 이용하여 쿼리를 요청합니다. 이는 사람이 읽을 수 있는 형태의 언어(human readable language)이기 때문에, Query Parser는 이 SQL을 컴퓨터가 이해하기 위한 형태로 변환합니다.
 
 **Query Parser**는 SQL string을 입력받아 컴퓨터가 이해할 수 있는 **logical plan**(논리 계획)을 생성하게 됩니다. 이는 통상 tree(트리)로 나타내며, relational algebra(관계형 대수)를 모방한 내용을 담고 있습니다. Project(`SELECT` 절에 해당), Select(`WHERE` 절에 해당), Join, Sort 등의 논리적인 연산자가 포함되어 있습니다. 대략 자료구조 시간 때 산술식을 tree로 저장하는 것과 비슷하게 SQL을 tree로 저장하는 역할을 한다고 생각하시면 됩니다.
 
 **Query Optimizer**는 이 logical plan을 입력으로 받아 **최적화된 physical plan**(물리 계획; execution plan 혹은 실행 계획이라고도 불림)을 생성합니다. 이 과정에서 이름에 걸맞게 logical plan 혹은 physical plan을 더 좋은 성능을 가지도록 최적화합니다. Physical plan은 logical plan을 어떻게 실행할지에 대한 정보를 포함하고 있습니다. 예를들어 위의 logical plan에는 "Join을 한다"라는 정보를 포함하고 있다면, physical plan에는 "Join을 Hash Join을 통해 처리한다"라는 정보를 포함하고 있습니다.
 
-Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 됩니다. **Execution Engine은 Storage Engine이 제공하는 데이터 형태에 따라 처리를 합니다.** 예를들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 형태 또한 column oriented data structure로 관리될 것입니다(e.g., 예를들어 `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다).
+Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 됩니다. **Execution Engine은 Storage Engine이 제공하는 데이터 형태에 따라 physical plan을 처리합니다.** 예를들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 형태 또한 column oriented data structure로 관리될 것입니다(e.g., 예를들어 `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다).
 
 이 섹션에서 Query Processor, Execution Engine, Storage Engine의 역할을 간략하게 알아보았습니다. Apache Arrow는 여기에서 Storage Engine의 데이터 관리 형태, Apache DataFusion은 Query Processor와 Execution Engine에 해당한다고 볼 수 있습니다. 자세한 내용을 앞으로 살펴보겠습니다.
 
@@ -63,9 +65,14 @@ Apache Arrow는 데이터 교환뿐 아니라 빠른 인메모리 분석 도구�
 
 Columnar format은 테이블 데이터를 저장하는 방법 중 하나입니다. 전통적인 RDBMS는 테이블 데이터를 row oriented(행 기반) format으로 관리하였습니다. 예를들어 `Student(sid INTEGER, name STRING, age INTEGER)`라는 테이블이 있다고 가정해 보겠습니다. Row oriented format의 경우 물리적으로 데이터를 `1,구교승,29$2,배정모,29$3,서정범,30$4,배현모,31`과 같은 식으로 각 행에 대한 정보를 연속된 공간에 저장합니다(`,`는 열의 구분을, `$`은 행의 구분을 위해 사용되었습니다). 반면 column oriented format의 경우 물리적으로 데이터를 `1,2,3,4$구교승,배정모,서정범,배현모$29,29,30,31`과 같이 각 열에 대한 정보를 연속된 공간에 저장합니다(`,`는 행의 구분을, `$`은 열의 구분을 위해 사용되었습니다).
 
-그렇다면 왜 columnar format을 사용할까요? Columnar format은 분석 쿼리를 잘 처리하기 위해 사용됩니다. 분석 쿼리는 대부분 단일 행을 접근하는 것보다는 여러 행을 접근하여 집계를 하는 동작을 수행합니다. `SELECT SUM(age) FROM Student`라는 쿼리가 분석 쿼리의 간단한 예시가 될 수 있겠습니다. 이것을 row oriented format으로 처리한다고 가정해 보겠습니다 (이전 단락의 예시와 함께 보세요). DBMS는 물리적으로 저장된 데이터를 읽어드린 뒤에 각 행별로 가장 마지막 column `age`를 찾아가 읽어내야 합니다. 그 뒤에 이 값들을 합산하겠지요. 반면 column oriented format으로 처리한다고 생각해 보겠습니다. DBMS는 특정 열를 찾은 뒤에 연속적으로 저장되어 있는 `age`값을 한번에 읽어들이기만 하면 됩니다. 이러한 접근 방식의 차이점은 storage의 sequential I/O를 더 적극적으로 활용할 수 있고(연속된 `age`값을 읽으면 되기 때문에), CPU의 caching 측면에서도 유리하게 작용합니다. 궁극적으로 성능상 이득이 있는 것이지요.
+그렇다면 왜 columnar format을 사용할까요? Columnar format은 분석 쿼리를 잘 처리하기 위해 사용됩니다. 분석 쿼리는 대부분 단일 행을 접근하는 것보다는 여러 행을 접근하여 집계를 하는 동작을 수행합니다. `SELECT SUM(age) FROM Student`라는 쿼리가 분석 쿼리의 간단한 예시가 될 수 있겠습니다. 이것을 row oriented format으로 처리한다고 가정해 보겠습니다 (이전 단락의 예시와 함께 보세요). DBMS는 물리적으로 저장된 데이터를 읽어들인 뒤에 각 행별로 가장 마지막 column `age`를 찾아가 읽어내야 합니다. 그 뒤에 이 값들을 합산하겠지요. 반면 column oriented format으로 처리한다고 생각해 보겠습니다. DBMS는 특정 열를 찾은 뒤에 연속적으로 저장되어 있는 `age`값을 한번에 읽어들이기만 하면 됩니다. 이러한 접근 방식의 차이점은 storage의 sequential I/O를 더 적극적으로 활용할 수 있고(연속된 `age`값을 읽으면 되기 때문에), CPU의 caching 측면에서도 유리하게 작용합니다. 궁극적으로 성능상 이득이 있는 것이지요.
 
-더 나아가 vectorized execution도 column format이 유리한 조건을 만들어 냅니다. 요즘 CPU는 효율적인 vector processing을 위한 Single Instruction Multiple Data(SIMD) 연산을 지원합니다. Columnar format은 함께 처리해야 하는 데이터가 이미 연속된 공간에 존재하기 때문에(`age` 열의 값이 `29,29,30,31`과 같이 연속된 공간에 저장), 이러한 SIMD 연산을 위한 최적의 상태에 있습니다. 만약 행 기반의 데이터였다면 loop을 통해 최소 4개 이상의 instruction이 필요했겠지만, SIMD 연산으로는 하나면 충분합니다.
+더 나아가 column format은 요즘 많은 시스템에서 사용하는 vectorized execution에 유리한 조건을 만들어 냅니다. 
+Vectorized exectuion은 데이터를 처리할 때 여러 행에 대한 데이터를 한번에 처리하는 것을 의미합니다.
+요즘 CPU는 Single Instruction Multiple Data(SIMD) 연산을 지원하는데, 이는 vector processing에 더욱 더 큰 성능 이득을 가져다 줍니다.
+Columnar format은 함께 처리해야 하는 데이터가 이미 연속된 공간에 존재하기 때문에(`age` 열의 값이 `29,29,30,31`과 같이 연속된 공간에 저장), 이러한 SIMD 연산을 위한 최적의 상태에 있습니다.
+만약 행 기반의 데이터였다면 loop을 통해 최소 4개 이상의 instruction이 필요했겠지만, SIMD 연산으로는 하나면 충분합니다.
+뿐만 아니라 연속된 공간에 데이터가 저장되어 있는 점은 CPU caching 측면에서도 이득을 가져다 줍니다.
 
 Apache Arrow는 이런 columnar format의 장점을 극대화합니다. Apache Arrow 사용자의 데이터를 columnar format으로 메모리 상에서 관리하고, SIMD 연산과 효율적인 구현으로 빠른 데이터 처리 성능을 제공합니다.
 
@@ -84,7 +91,8 @@ DataFusion는 새로운 DBMS를 구축할 때 고품질의 오픈소스 쿼리 �
 전통적으로 각 데이터베이스 시스템이 자체적인 쿼리 엔진을 개발해왔지만 (예를들어 MySQL과 Postgres와 같은 시스템들은 제각각 다른 구성을 가지고 있죠), 이는 구축과 유지보수에 많은 비용이 든다고 분석하고 있습니다.  DataFusion은 새로운 DBMS를 만들 때 처음부터 만들지 말고, DataFusion과 같이 잘 구성된 시스템을 모듈 형식으로 가져가 쓰자고 제안합니다.
 그 뒤에 개발하고자 하는 DBMS 특징에 맞게 기능을 추가하거나 코드를 수정하자고 말하죠.
 
-그런 이유인지 DataFusion은 전통적인 DBMS와 매우 유사하게 구성되어 있습니다. 이번 장에서는 어떤 식으로 DataFusion 쿼리 엔진이 구성되어 있고, 어떻게 확장성이 좋은지에 대해서 알아보도록 하겠습니다.
+그런 이유인지 DataFusion은 전통적인 DBMS와 매우 유사하게 구성되어 있습니다.
+이번 장에서는 어떤 식으로 DataFusion 쿼리 엔진이 구성되어 있는는지 알아보도록 하겠습니다.
 
 ### Query Engine Components
 
@@ -129,7 +137,8 @@ Apache DataFusion은 빠른 쿼리 실행 성능을 장점으로 내세우고 �
 
 Asynchronous I/O는 I/O를 비동기식으로 처리하는 것을 의미합니다. I/O의 대상이 되는 disk나 network의 경우, CPU에 비해 엄청나게 느리게 동작합니다. 따라서 CPU가 I/O를 요청하게 되면 요청이 처리될 때 까지 (즉, HDD에서 데이터를 읽거나, 네트워크를 통해 데이터를 성공적으로 전송할 때 까지) CPU는 할 일이 없게 됩니다. 이 때 CPU가 다른 일을 하지 않고 기다리는 것을 Synchronous I/O라고 하고, 그 사이에 다른 일을 하는 것을 Asynchronous I/O라고 합니다. DataFusion은 Async I/O 방식을 채택하여 사용하고 있습니다.
 
-Vectorized processing은 이전 장에서 설명한 것처럼 SIMD 연산과 궁합이 잘 맞습니다. 더욱이 DataFusion은 columnar 방식인 Arrow를 기반으로 하여 더 좋은 성능을 낼 수 있습니다.
+Vectorized processing은 이전 장에서 설명한 것처럼 columnar format과 궁합이 잘 맞습니다. 
+DataFusion은 columnar 방식인 Arrow를 기반으로 하여 좋은 성능을 냅니다.
 
 ![DataFusion Data Partitioning](/assets/images/2025-04-26-apache-arrow-and-datafusion/datafusion-partition.png){: width="700" style="display:block; margin-left:auto; margin-right:auto"}
 

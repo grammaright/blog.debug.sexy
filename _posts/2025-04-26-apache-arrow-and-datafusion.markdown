@@ -22,9 +22,10 @@ First, let's briefly overview what a Database Management System is and what comp
 *DBMS Architecture Overview ([source](https://www.oreilly.com/library/view/database-internals/9781492040330/ch01.html))* 
 {: refdef}
 
-The above diagram shows a typical DBMS architecture. The topmost Transport layer handles communication with client programs (e.g., `psql`, `mysql` command programs) and other DBMS instances.
-The components including Transport layer, Query Processor, Execution Engine, and Storage Engine, are commonly referred to as a single DBMS or instance.
+The above diagram shows a typical DBMS architecture.
+Transport layer, Query Processor, Execution Engine, and Storage Engine are commonly referred to as a single DBMS or instance.
 
+The topmost Transport layer handles communication with client programs (e.g., `psql`, `mysql` command programs) and other DBMS instances.
 When a user inputs a query through a client program, that query is passed to the DBMS's Query Processor. In the case of Relational Database Management Systems (RDBMS), queries are typically expressed using Structured Query Language (SQL), which users use to make query requests. Since this is a human readable language, the Query Parser converts this SQL into a form that computers can understand.
 
 The **Query Parser** takes an SQL string as input and generates a **logical plan** that computers can understand. This is typically represented as a tree containing relational algebra operations. It includes logical operators such as Project (corresponding to `SELECT` clauses), Select (corresponding to `WHERE` clauses), Join, and Sort. Think of it roughly like storing arithmetic expressions as trees in data structures class, but for SQL.
@@ -67,7 +68,12 @@ Columnar format is one method of storing table data. Traditional RDBMS managed t
 
 So why use columnar format? Columnar format is used to handle analytical queries well. Analytical queries typically perform aggregations by accessing multiple rows rather than accessing single rows. `SELECT SUM(age) FROM Student` would be a simple example of an analytical query. Let's assume this is processed with row-oriented format (refer to the previous paragraph's example). The DBMS must read the physically stored data, then find and read the last column `age` for each row, then sum these values. Now consider processing with column-oriented format. The DBMS simply needs to find a specific column and read all consecutive `age` values at once. This difference in approach allows more aggressive use of storage's sequential I/O (since consecutive `age` values can be read) and is advantageous from a CPU caching perspective. Ultimately, there are performance benefits.
 
-Furthermore, vectorized execution also creates favorable conditions for column format. Modern CPUs support Single Instruction Multiple Data (SIMD) operations for efficient vector processing. Since columnar format already has data that needs to be processed together in consecutive space (`age` column values stored consecutively like `29,29,30,31`), it's in an optimal state for such SIMD operations. If it were row-based data, at least 4 or more instructions would be needed through loops, but with SIMD operations, one is sufficient.
+Furthermore, column format creates favorable conditions for vectorized execution that many modern systems use.
+Vectorized execution means processing data for multiple rows at once.
+Modern CPUs support Single Instruction Multiple Data (SIMD) operations, which provide even greater performance benefits for vector processing.
+Since columnar format already has data that needs to be processed together in consecutive space (`age` column values stored consecutively like `29,29,30,31`), it's in an optimal state for such SIMD operations.
+If it were row-based data, at least 4 or more instructions would be needed through loops, but with SIMD operations, one is sufficient.
+Moreover, having data stored in consecutive space also provides benefits from a CPU caching perspective.
 
 Apache Arrow maximizes these advantages of columnar format. Apache Arrow manages user data in columnar format in memory and provides fast data processing performance through SIMD operations and efficient implementation.
 
@@ -80,13 +86,16 @@ Apache Arrow maximizes these advantages of columnar format. Apache Arrow manages
 
 ## Apache DataFusion
 
-Apache DataFusion is an **extensible** **query engine** that uses **Apache Arrow as its in-memory format**. In other words, it's an engine that processes SQL queries based on columnar format, and it's highly extensible. Many users embed DataFusion into their processes to use it as a SQL or DataFrame engine.
+Apache DataFusion is an **extensible** **query engine** that uses **Apache Arrow as its in-memory format**.
+In other words, it's an engine that processes SQL queries based on columnar format, and it's highly extensible.
+Many users embed DataFusion into their processes to use it as a SQL or DataFrame engine.
 
 DataFusion proposes that utilizing high-quality open-source query engines will become a future trend when building new DBMS ([source](https://docs.google.com/presentation/d/1D3GDVas-8y0sA4c8EOgdCvEjVND4s2E7I6zfs67Y4j8/edit#slide=id.g22007bd2b6f_0_343)).
 Traditionally, each database system has developed its own query engine (for example, systems like MySQL and PostgreSQL each have their own distinct architectures), but this analysis shows that such approaches require significant costs for construction and maintenance. DataFusion proposes that when creating new DBMS, instead of starting from scratch, you should take well-designed systems like DataFusion in modular form.
 Then add features or modify code to match the characteristics of the DBMS you want to develop.
 
-Perhaps for this reason, DataFusion is structured very similarly to traditional DBMS. In this chapter, let's explore how the DataFusion query engine is structured and how it achieves good extensibility.
+Perhaps for this reason, DataFusion is structured very similarly to traditional DBMS.
+In this chapter, let's explore how the DataFusion query engine is structured.
 
 ### Query Engine Components
 
@@ -138,7 +147,8 @@ Apache DataFusion touts fast query execution performance as an advantage. Primar
 
 Asynchronous I/O means processing I/O asynchronously. I/O targets like disks or networks operate much slower than CPUs. Therefore, when a CPU requests I/O, the CPU has nothing to do until the request is processed (i.e., until data is read from HDD or successfully transmitted over network). When the CPU waits without doing other work during this time, it's called Synchronous I/O, and when it does other work meanwhile, it's called Asynchronous I/O. DataFusion adopts the Async I/O approach.
 
-Vectorized processing works well with SIMD operations as explained in the previous chapter. Furthermore, DataFusion can achieve better performance by being based on columnar Arrow.
+Vectorized processing works well with columnar format as explained in the previous chapter.
+DataFusion achieves good performance by being based on columnar Arrow.
 
 ![DataFusion Data Partitioning](/assets/images/2025-04-26-apache-arrow-and-datafusion/datafusion-partition.png){: width="700" style="display:block; margin-left:auto; margin-right:auto"}
 
