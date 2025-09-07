@@ -37,7 +37,7 @@ Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 �
 
 ## Apache Arrow
 
-Apache Arrow는 **빠른 데이터 교환** 및 **인메모리 분석**을 위한 **columnar format** 및 **multi-language toolbox** 입니다. 많은 사용자들의 이를 여러 프로세스나 언어간에 연결하는 장치로 사용하거나, 데이터를 빠르게 분석할 수 있는 툴로써 사용합니다.
+Apache Arrow는 **빠른 데이터 교환** 및 **인메모리 분석**을 위한 **columnar format** 및 **multi-language toolbox** 입니다. 많은 사용자들이 이를 여러 프로세스나 언어간에 연결하는 장치로 사용하거나, 데이터를 빠르게 분석할 수 있는 툴로써 사용합니다.
 
 이 섹션에서는 Apache Arrow의 **1) multi-language를 지원하며 빠르게 데이터를 교환할 수 있고**, **2) columnar in-memory format을 이용하여 데이터를 빠르게 처리할 수 있는** 점에 대해 중점적으로 논의해보도록 하겠습니다.
 
@@ -79,7 +79,7 @@ Apache Arrow는 이런 columnar format의 장점을 극대화합니다. Apache A
 ### 더 읽어볼 거리
 
 - Apache Arrow의 columnar format은 구체적으로 어떻게 생겼는가? [링크](https://arrow.apache.org/docs/format/Columnar.html#physical-memory-layout)
-- Apache Arrow는 구체적으로 어떻게 IPC를 실현하는가? 어떻게 shared memory를 관리하고 어떤 IPC format으로 데이터로 통신을 수행할까? [링크](https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc)
+- Apache Arrow는 구체적으로 어떻게 IPC를 실현하는가? 어떻게 shared memory를 관리하고 어떤 IPC format으로 데이터 통신을 수행할까? [링크](https://arrow.apache.org/docs/format/Columnar.html#serialization-and-interprocess-communication-ipc)
 - Column Store가 Row Store보다 분석 쿼리에서 더 좋은 성능을 내는 이유는 무엇일까? [링크](https://www.cs.umd.edu/~abadi/papers/abadi-sigmod08.pdf)
 - 어떻게 columnar format에서 variable-length type(e.g., VARCHAR)나 nested object(e.g., structure)를 관리할 수 있을까? [variable-length](https://arrow.apache.org/docs/format/Columnar.html#variable-size-list-layout), [structured layout](https://arrow.apache.org/docs/format/Columnar.html#struct-layout)
 

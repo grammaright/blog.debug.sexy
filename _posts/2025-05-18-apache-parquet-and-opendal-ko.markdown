@@ -37,14 +37,16 @@ Parquet의 대표적인 특징으로는 열기반 스토리지, 압축, 최적�
 이런 식으로 데이터를 row group과 column chunk로 나누어 저장하는 방식을 PAX(Partition Attributes Across)라고 합니다.
 DuckDB의 storage format도 유사한 방식으로 구성되어 있습니다 [6].
 
-### 최적화된 쿼리 프로세싱
+### 최적화된 쿼리 프로세싱 및 압축
 
-Parquet는 predicate pushdown 기능을 지원하고, 이를 통해 빠른 스캔 성능을 기대할 수 있습니다.
-이 기능을 위해 Parquet는 *zone map* (min/max 통계), *dictionary encoding* (+ *run-length encoding*과 *bit packing*), 그리고 *bloom filter*를 사용합니다.
+Parquet는 predicate pushdown 기능을 지원하여 빠른 스캔 성능을 제공하고, 효율적인 압축을 통해 저장 공간을 최적화합니다.
+이러한 기능을 위해 Parquet는 *zone map* (min/max 통계), *dictionary encoding* (+ *run-length encoding*과 *bit packing*), 그리고 *bloom filter*를 사용합니다.
 
 ### Zone map
 
 Parquet는 각각의 row group 내에 있는 column chunk마다 데이터의 min 값과 max 값을 통계 정보로 기록해 두고 있습니다. 이를 **zone map**이라고 합니다. Zone map이 있다면, Parquet 파일에 대해 스캔을 수행할 때, 관련 없는 column chunk에 대한 스캔을 생략할 수 있습니다.
+
+예를 들어 `ORDER BY created_date`로 정렬된 주문 데이터가 있다고 가정해보겠습니다. Row Group A는 `created_date`의 min=2025-01-01, max=2025-01-31을, Row Group B는 min=2025-02-01, max=2025-02-28을 zone map으로 가지고 있다면, `WHERE created_date >= '2025-02-15'`라는 쿼리 실행 시 Row Group A는 스캔하지 않고 건너뛸 수 있습니다.
 
 데이터의 정렬 상태에 따라 zone map의 효과는 매우 클 수 있고, 반대로 매우 작을 수도 있습니다. 만약 데이터가 특정 열을 기준으로 정렬되어 있다면 zone map의 효과는 매우 클 것입니다. 반면 데이터가 정렬되어 있지 않으면서 skewed 되어 있다면, zone map의 효과는 미미할 수 있습니다.
 
@@ -93,6 +95,8 @@ Bloom filter는 적은 양의 메모리(데이터 개수 N보다 작은 bits)를
 데이터 저장 시 Parquet는 bloom filter를 만들고, 우리가 데이터를 찾을 때 이 bloom filter를 사용합니다.
 만약에 bloom filter가 "Yes"를 반환한다면 해당 column chunk를 스캔해 보는 것이고, "No"를 반환한다면 해당 데이터를 건너뜁니다.
 
+더 나은 공간 효율성을 위해 Parquet는 다양한 압축 알고리즘을 지원합니다. 대표적으로 **gzip**, **snappy**, **zstd**, **lz4** 등이 있으며, 각각은 압축률과 성능 간의 서로 다른 trade-off를 제공합니다. Gzip은 높은 압축률을 제공하지만 상대적으로 느리고, Snappy는 낮은 압축률을 가지지만 빠른 압축/해제 속도를 제공합니다. Zstd는 두 방식의 중간 지점으로 양호한 압축률과 성능을 모두 제공합니다. 압축은 page 단위로 적용되며, 앞서 언급한 dictionary encoding이나 run-length encoding과 함께 사용되어 더욱 효과적인 압축을 달성할 수 있습니다.
+
 ### Nested Data
 
 Parquet는 설계 단계에서부터 nested 데이터를 고려하였습니다 [1]. Nested 데이터를 저장 및 관리하기 위해 **Dremel(Google BigQuery)** [9][10]에서 사용한 방법을 채택하였습니다.
@@ -104,7 +108,7 @@ Parquet는 설계 단계에서부터 nested 데이터를 고려하였습니다 [
 {: refdef}
 
 위 그림은 Dremel이 nested 데이터를 관리하는 방법을 개념적으로 나타낸 것입니다.
-우측의 트리 구조와 같이 A라는 객체 안에 B, ..., E 라는 반복 혹은 생략 가능한 객체가 존재하고, B라는 객체 안에는 C라는 객체와 D라는 반복 혹은 생략 가능한 객체가 존재합니다.
+우측의 트리 구조와 같이 A라는 객체 안에 B, ..., E 라는 반복 혹은 생략 가능한 객체가 존재하고, B라는 객체 안에는 C라는 객체와 D라는 반복 혹은 생략 가능한 객체가 존재합니다 (JSON이나 Protobuf와 같은 형태를 생각해 보세요).
 
 이런 객체를 관리하고자 할 때 우리가 데이터를 생긴 그대로 저장한다면, 그림의 좌측과 같이 각각의 nested 객체에 대한 정보가 뒤섞여서 저장되게 됩니다. 반면 Dremel은 열기반 데이터 포맷을 활용하여 우측과 같이 각각의 path에 해당하는 데이터를 연속된 공간에 저장하는 것을 제안했습니다. 후자의 경우 분석 질의를 처리하는 관점에서 더 이득이 있을 것입니다.
 
@@ -147,7 +151,7 @@ OpenDAL에는 Service, Layer, 그리고 Operator 컴포넌트가 있습니다.
     Read, write, stat, delete, create\_dir, copy 등의 연산을 제공합니다.
     우리는 이를 통해 데이터를 생성하거나 수정, 삭제할 수 있습니다.
 
-OpenDAL은 현재 특정 범위의 데이터를 읽는 `read\_with()` 함수는 지원하나, 특정 위치에 데이터를 쓰는 기능(e.g., `pwrite()` in POSIX)는 지원하지 않습니다.
+OpenDAL은 현재 특정 범위의 데이터를 읽는 `read_with()` 함수는 지원하나, 특정 위치에 데이터를 쓰는 기능(e.g., `pwrite()` in POSIX)는 지원하지 않습니다.
 
 ### DataBend와의 관계
 

@@ -28,13 +28,15 @@ The metadata is defined using Thrift Protocol [2]. The file metadata located at 
 
 This method of storing data divided into row groups and column chunks is called PAX (Partition Attributes Across). DuckDB's storage format is also structured in a similar way [6].
 
-### Optimized Query Processing
+### Optimized Query Processing and Compression
 
-Parquet supports predicate pushdown functionality, which enables fast scan performance. For this functionality, Parquet uses *zone maps* (min/max statistics), *dictionary encoding* (+ *run-length encoding* and *bit packing*), and *bloom filters*.
+Parquet supports predicate pushdown functionality for fast scan performance and optimizes storage space through efficient compression. For these functionalities, Parquet uses *zone maps* (min/max statistics), *dictionary encoding* (+ *run-length encoding* and *bit packing*), and *bloom filters*.
 
 ### Zone Map
 
 Parquet records the minimum and maximum values of data as statistical information for each column chunk within each row group. This is called a **zone map**. With zone maps, when performing scans on Parquet files, scans of unrelated column chunks can be skipped.
+
+For example, suppose we have order data sorted by `ORDER BY created_date`. If Row Group A has min=2025-01-01, max=2025-01-31 for `created_date`, and Row Group B has min=2025-02-01, max=2025-02-28 in its zone map, then when executing a query like `WHERE created_date >= '2025-02-15'`, Row Group A can be skipped without scanning.
 
 Depending on the sorting state of data, the effectiveness of zone maps can be very large or very small. If data is sorted based on a specific column, the zone map's effectiveness will be very large. Conversely, if data is unsorted and skewed, the zone map's effectiveness may be minimal.
 
@@ -75,6 +77,8 @@ There may be cases where the zone maps or dictionary encoding explored above are
 
 Parquet uses *bloom filters* [8] for such cases. A bloom filter is a data structure that probabilistically determines whether a specific element is included in a set. If it returns "No," the data is definitely not there, and if it returns "Yes," the data may or may not be there (False Positive). Bloom filters can quickly process "Yes" or "No" queries using a small amount of memory (fewer bits than the number of data items N). When storing data, Parquet creates bloom filters, and when we search for data, we use these bloom filters. If the bloom filter returns "Yes," we scan the corresponding column chunk; if it returns "No," we skip that data.
 
+For better space efficiency, Parquet supports various compression algorithms. These include **gzip**, **snappy**, **zstd**, **lz4**, each providing different trade-offs between compression ratio and performance. Gzip provides high compression ratios but is relatively slow, while Snappy has lower compression ratios but offers fast compression/decompression speeds. Zstd serves as a middle ground, providing both good compression ratios and performance. Compression is applied at the page level, and when combined with the aforementioned dictionary encoding or run-length encoding, it can achieve even more effective compression.
+
 ### Nested Data
 
 Parquet considered nested data from the design stage [1]. To store and manage nested data, it adopted the method used by **Dremel (Google BigQuery)** [9][10].
@@ -85,7 +89,7 @@ Parquet considered nested data from the design stage [1]. To store and manage ne
 *Dremel's Nested Data Management Concept [9]* 
 {: refdef}
 
-The above diagram conceptually shows how Dremel manages nested data. Like the tree structure on the right, object A contains repeatable or optional objects B, ..., E, and object B contains object C and repeatable or optional object D.
+The above diagram conceptually shows how Dremel manages nested data. Like the tree structure on the right, object A contains repeatable or optional objects B, ..., E, and object B contains object C and repeatable or optional object D (think of formats like JSON or Protobuf).
 
 When managing such objects, if we stored data as it appears, information about each nested object would be mixed and stored as shown on the left side of the diagram. In contrast, Dremel proposed using column-oriented data format to store data corresponding to each path in consecutive space as shown on the right. The latter approach would be more advantageous from the perspective of processing analytical queries.
 
