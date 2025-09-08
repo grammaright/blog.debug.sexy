@@ -40,9 +40,9 @@ DuckDB의 storage format도 유사한 방식으로 구성되어 있습니다 [6]
 ### 최적화된 쿼리 프로세싱 및 압축
 
 Parquet는 predicate pushdown 기능을 지원하여 빠른 스캔 성능을 제공하고, 효율적인 압축을 통해 저장 공간을 최적화합니다.
-이러한 기능을 위해 Parquet는 *zone map* (min/max 통계), *dictionary encoding* (+ *run-length encoding*과 *bit packing*), 그리고 *bloom filter*를 사용합니다.
+이러한 기능을 위해 Parquet는 *zone map* (min/max 통계), *dictionary encoding* (+ *run-length encoding*과 *bit packing*), *bloom filter*, 그리고 다양한 *압축 알고리즘*을 사용합니다.
 
-### Zone map
+#### Zone map
 
 Parquet는 각각의 row group 내에 있는 column chunk마다 데이터의 min 값과 max 값을 통계 정보로 기록해 두고 있습니다. 이를 **zone map**이라고 합니다. Zone map이 있다면, Parquet 파일에 대해 스캔을 수행할 때, 관련 없는 column chunk에 대한 스캔을 생략할 수 있습니다.
 
@@ -50,7 +50,7 @@ Parquet는 각각의 row group 내에 있는 column chunk마다 데이터의 min
 
 데이터의 정렬 상태에 따라 zone map의 효과는 매우 클 수 있고, 반대로 매우 작을 수도 있습니다. 만약 데이터가 특정 열을 기준으로 정렬되어 있다면 zone map의 효과는 매우 클 것입니다. 반면 데이터가 정렬되어 있지 않으면서 skewed 되어 있다면, zone map의 효과는 미미할 수 있습니다.
 
-### Dictionary encoding
+#### Dictionary encoding
 
 ![Dictionary Encoding](/assets/images/2025-05-18-apache-parquet-and-opendal/dictionary.png){: width="200" style="display:block; margin-left:auto; margin-right:auto"}
 
@@ -84,7 +84,7 @@ Run-length encoding과 bitpacking encoding은 dictionary encoding 없이 데이�
 Parquet는 low cardinality(i.e., distinct한 값의 개수가 적은 경우) 상황일 때 dictionary encoding을 사용합니다.
 하나의 열에 같은 값이 많은 경우가 이에 해당하는데, 이 때는 dictionary encoding이 효과적일 것입니다.
 
-### Bloom filter
+#### Bloom filter
 
 위에서 살펴본 zone map이나 dictionary encoding이 효과가 없는 경우가 있을 수 있습니다. 데이터가 large cardinality를 가지면서 매우 skewed 되어 있을 수 있습니다. 그렇다면 이런 경우에는 빠른 스캔을 어떻게 만들어 낼 수 있을까요?
 
@@ -94,6 +94,8 @@ Bloom filter는 특정 원소가 집합에 포함되어 있는지 여부를 확�
 Bloom filter는 적은 양의 메모리(데이터 개수 N보다 작은 bits)를 이용하여 "Yes" 혹은 "No" 질의를 빠르게 처리할 수 있습니다.
 데이터 저장 시 Parquet는 bloom filter를 만들고, 우리가 데이터를 찾을 때 이 bloom filter를 사용합니다.
 만약에 bloom filter가 "Yes"를 반환한다면 해당 column chunk를 스캔해 보는 것이고, "No"를 반환한다면 해당 데이터를 건너뜁니다.
+
+#### 압축
 
 더 나은 공간 효율성을 위해 Parquet는 다양한 압축 알고리즘을 지원합니다. 대표적으로 **gzip**, **snappy**, **zstd**, **lz4** 등이 있으며, 각각은 압축률과 성능 간의 서로 다른 trade-off를 제공합니다. Gzip은 높은 압축률을 제공하지만 상대적으로 느리고, Snappy는 낮은 압축률을 가지지만 빠른 압축/해제 속도를 제공합니다. Zstd는 두 방식의 중간 지점으로 양호한 압축률과 성능을 모두 제공합니다. 압축은 page 단위로 적용되며, 앞서 언급한 dictionary encoding이나 run-length encoding과 함께 사용되어 더욱 효과적인 압축을 달성할 수 있습니다.
 

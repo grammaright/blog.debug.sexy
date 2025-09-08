@@ -38,7 +38,7 @@ In this section, we briefly explored the roles of Query Processor, Execution Eng
 
 ## Apache Arrow
 
-Apache Arrow is a **columnar format** and **multi-language toolbox** for **fast data exchange** and **in-memory analytics**. Many users utilize it as a bridge between different processes or languages, or as a tool for fast data analysis.
+Apache Arrow is a **columnar format** and **multi-language toolbox** for **fast data exchange** and **in-memory analytics**. Many users use it as a bridge between different processes or languages, or as a tool for fast data analysis.
 
 This section will focus on Apache Arrow's ability to **1) support multi-language and fast data exchange**, and **2) process data quickly using columnar in-memory format**.
 
