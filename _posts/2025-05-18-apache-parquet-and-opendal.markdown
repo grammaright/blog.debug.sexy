@@ -79,7 +79,7 @@ Parquet uses *bloom filters* [8] for such cases. A bloom filter is a data struct
 
 #### Compression
 
-For better space efficiency, Parquet supports various compression algorithms. These include **gzip**, **snappy**, **zstd**, **lz4**, each providing different trade-offs between compression ratio and performance. Gzip provides high compression ratios but is relatively slow, while Snappy has lower compression ratios but offers fast compression/decompression speeds. Zstd serves as a middle ground, providing both good compression ratios and performance. Compression is applied at the page level, and when combined with the aforementioned dictionary encoding or run-length encoding, it can achieve even more effective compression.
+For better space efficiency, Parquet supports various compression algorithms. These include **gzip**, **snappy**, **zstd**, each providing different trade-offs between compression ratio and performance. Gzip provides high compression ratios but is relatively slow, while Snappy has lower compression ratios but offers fast compression/decompression speeds. Zstd serves as a middle ground, providing both good compression ratios and performance. Compression is applied at the page level, and when combined with the aforementioned dictionary encoding or run-length encoding, it can achieve even more effective compression.
 
 ### Nested Data
 

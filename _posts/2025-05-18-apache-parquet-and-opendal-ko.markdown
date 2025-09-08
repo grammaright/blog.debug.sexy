@@ -97,7 +97,7 @@ Bloom filter는 적은 양의 메모리(데이터 개수 N보다 작은 bits)를
 
 #### 압축
 
-더 나은 공간 효율성을 위해 Parquet는 다양한 압축 알고리즘을 지원합니다. 대표적으로 **gzip**, **snappy**, **zstd**, **lz4** 등이 있으며, 각각은 압축률과 성능 간의 서로 다른 trade-off를 제공합니다. Gzip은 높은 압축률을 제공하지만 상대적으로 느리고, Snappy는 낮은 압축률을 가지지만 빠른 압축/해제 속도를 제공합니다. Zstd는 두 방식의 중간 지점으로 양호한 압축률과 성능을 모두 제공합니다. 압축은 page 단위로 적용되며, 앞서 언급한 dictionary encoding이나 run-length encoding과 함께 사용되어 더욱 효과적인 압축을 달성할 수 있습니다.
+더 나은 공간 효율성을 위해 Parquet는 다양한 압축 알고리즘을 지원합니다. 대표적으로 **gzip**, **snappy**, **zstd** 등이 있으며, 각각은 압축률과 성능 간의 서로 다른 trade-off를 제공합니다. Gzip은 높은 압축률을 제공하지만 상대적으로 느리고, Snappy는 낮은 압축률을 가지지만 빠른 압축/해제 속도를 제공합니다. Zstd는 두 방식의 중간 지점으로 양호한 압축률과 성능을 모두 제공합니다. 압축은 page 단위로 적용되며, 앞서 언급한 dictionary encoding이나 run-length encoding과 함께 사용되어 더욱 효과적인 압축을 달성할 수 있습니다.
 
 ### Nested Data
 
