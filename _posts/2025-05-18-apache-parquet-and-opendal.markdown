@@ -145,7 +145,7 @@ The above diagram represents the mechanism by which Fuse Engine manages a single
 
 - Block: Actual data fragments. Composed of Parquet files.
 - Segment: Blocks and their metadata. For example, it indicates how many rows they contain, what the data size is, etc.
-- Snapshot: Represents the state of a table at a specific point in time and points to Segments.
+- Snapshot: Represents the state of a table at a specific point in time and contains Segments.
 
 Each time a table is updated (record insertion, deletion, modification), a new Snapshot is created. If a Block containing data needs to be changed, Fuse Engine **creates a new Block** and makes new Segments and Snapshots containing it. Unchanged Segments or Blocks are not recreated when tables are updated but reuse existing ones.
 
