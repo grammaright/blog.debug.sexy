@@ -164,4 +164,4 @@ DBMS를 중점적으로 연구/개발하는 사람들은 최근 DataFusion과 Ar
 
 지금까지 FDAP stack에서 Apache Arrow와 DataFusion의 기술적인 특징에 대하여 논의하였습니다.
 이는 DBMS의 Query Engine(Query Processor 및 Execution Engine)과 Storage Engine의 일부를 커버하고 있습니다.
-[다음 글]({% post_url 2025-05-18-apache-parquet-and-opendal-ko %})에서는 더 아래단의 Storage Engine과 밀접한 Parquet에 대해서 살펴보도록 하겠습니다. 또한 최근에 여러 data format을 통합된 레이어로 읽을 수 있는 layer인 OpenDAL에 대해서도 살펴보도록 하겠습니다.
+[다음 글]({% post_url 2025-05-18-apache-parquet-and-opendal-ko %})에서는 더 아래단의 Storage Engine과 밀접한 Parquet에 대해서 살펴보도록 하겠습니다. 또한 여러 data format을 통합된 레이어로 읽을 수 있는 OpenDAL에 대해서도 살펴보도록 하겠습니다.
