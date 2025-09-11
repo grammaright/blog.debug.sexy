@@ -12,7 +12,7 @@ This article is based on my seminar "Databend Seminar: Topics in Apache Parquet 
 
 ## Apache Parquet
 
-Apache Parquet is an open-source column-oriented data file format for efficient data management and retrieval [1]. It was started to provide column-oriented data representation optimized for the Hadoop ecosystem. Parquet's key characteristics include column-oriented storage, compression, and optimized query processing. Here, we'll explore the technically interesting topics of column-oriented storage and optimized query processing.
+Apache Parquet is an open-source column-oriented data file format for efficient data management and retrieval [1]. It was started to provide column-oriented data representation optimized for the Hadoop ecosystem. Parquet's key characteristics include column-oriented storage, compression, and optimized query processing.
 
 ### Column-Oriented Storage
 
