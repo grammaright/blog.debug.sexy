@@ -5,8 +5,9 @@ date:   2025-08-31 18:00:00 +0900
 categories: nosql
 ---
 
-*This post is a translated version of [the blog post]({% post_url 2025-08-31-nosql-basic-concepts-and-theory-ko %}) originally written in Korean.
-This article is based on my seminar "NoSQL Seminar: Basic Concepts and Theory" presented on August 31, 2025.*
+*This post is a translated version of [the blog post]({% post_url 2025-08-31-nosql-basic-concepts-and-theory-ko %}) originally written in Korean.*
+
+*This article is based on my seminar "NoSQL Basic Concepts and Theory" presented on August 31, 2025.*
 
 ---
 
@@ -20,9 +21,9 @@ The volume and velocity of data generated from web, mobile, and Internet of Thin
 - **Velocity**: The speed at which data is generated and consumed has become very fast.
 - **Variety**: Data types have diversified to include not only structured data but also semi-structured and unstructured data.
 
-RDBMS faces several limitations in handling these 3V characteristics.
+Traditional RDBMS faces several limitations in handling these 3V characteristics.
 
-- **Volume & Velocity**: RDBMS incurs overhead in distributed processing due to its strict ACID transaction model. This makes horizontal scaling difficult and reveals limitations when processing large-volume and high-velocity data.
+- **Volume & Velocity**: Traditional RDBMS incurs overhead in distributed processing due to its strict ACID transaction model. This makes horizontal scaling difficult and reveals limitations in processing rapidly generated large volumes of data.
 - **Variety**: RDBMS requires fixed schemas, making it difficult to store unstructured or semi-structured data with inconsistent formats.
 
 ## General Characteristics of NoSQL
@@ -88,4 +89,4 @@ Neo4j uses storage called **index-free adjacency** that directly connects data n
 ## Conclusion
 
 This article provided an overview of NoSQL's definition, background, general characteristics, and data models.
-Starting from the next article, we plan to discuss the representitive **storage engines** of each NoSQL model in greater depth.
+Starting from the next article, we plan to discuss the **storage engines** of each model's data stores in greater depth.
