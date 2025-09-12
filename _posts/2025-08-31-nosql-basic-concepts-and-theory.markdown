@@ -15,7 +15,7 @@ categories: nosql
 
 **NoSQL** is an abbreviation for 'Not only SQL' and represents a **movement** toward using database systems based on data models other than relational databases (RDBMS). NoSQL emerged to overcome the limitations of RDBMS's strict schema and **ACID (Atomicity, Consistency, Isolation, Durability)** transaction model.
 
-The volume and velocity of data generated from web, mobile, and Internet of Things (IoT) devices are explosively increasing. The characteristics of this data can be summarized as **big data's 3Vs**.
+The volume and velocity of data generated from web, mobile, and Internet of Things (IoT) devices are explosively increasing, and the heterogeneity of this generated data is also growing dramatically. The characteristics of this data can be summarized as **big data's 3Vs**.
 
 - **Volume**: The amount of data to be processed has increased tremendously.
 - **Velocity**: The speed at which data is generated and consumed has become very fast.
@@ -37,7 +37,7 @@ NoSQL systems have several common characteristics that distinguish them from RDB
 
 ## NoSQL Theories: CAP and BASE
 
-To understand NoSQL's weak consistency model, we must first examine **CAP theorem**. CAP was proposed by Eric Brewer in 2000 as the **CAP Conjecture** hypothesis and later proven by Seth Gilbert and Nancy Lynch in 2002. This theory explains that distributed systems can simultaneously satisfy at most two of three properties: **Consistency**, **Availability**, and **Partition tolerance**.
+To understand NoSQL's weak consistency model, we must first examine **CAP theorem**. CAP was first proposed by Eric Brewer in 2000 as **CAP conjecture** and was subsequently proven by Seth Gilbert and Nancy Lynch in 2002. This theory explains that distributed systems can simultaneously satisfy at most two of three properties: **Consistency**, **Availability**, and **Partition tolerance**.
 
 - **Consistency**: Ensures that all clients can access the same latest data regardless of which node they access.
 - **Availability**: Ensures that all nodes in the system can always respond to requests.
@@ -64,7 +64,7 @@ Most key-value stores internally use **LSM-Tree (Log-Structured Merge-Tree)** to
 
 ### Wide-Column Stores
 
-Wide-column stores are similar to RDBMS table structures, but a record with data columns that have not been defined in the schema can be added.
+Wide-column stores organize data like the table structures RDBMS uses, but allow adding columns dynamically without predefining them in a schema.
 That is, each row can have different sets of columns.
 This is advantageous for managing sparse data.
 **Apache Cassandra and HBase** are representative examples, suitable for environments where various columns are added per row, such as large-scale log data or time-series data.
