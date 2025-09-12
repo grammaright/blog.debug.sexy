@@ -73,9 +73,9 @@ Most wide-column stores use a key-value store as a storage engine.
 ### Document Stores
 
 Document stores model data in **document** form.
-A document typically follows semi-structured data formats like JSON, and consists of **a list of key-value pairs**.
+A document typically follows semi-structured data formats like JSON.
 Values within documents can contain nested documents, creating a **tree** structure that has hierarchical organization.
-This offers superior flexibility than RDBMS's records. 
+Document stores require no fixed schema, allowing data with different structures to be stored in the same collection, making them much more flexible than RDBMS's fixed table structures. 
 **MongoDB and Couchbase** are widely used document stores. 
 MongoDB internally uses the **WiredTiger** storage engine. This engine efficiently manages documents using **BSON**, a binary format similar to JSON, when storing data.
 
