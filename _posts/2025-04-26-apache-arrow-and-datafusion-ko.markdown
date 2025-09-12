@@ -31,7 +31,10 @@ Transport layer, Query Processor, Execution Engine, Storage Engine을 포함하�
 
 **Query Optimizer**는 이 logical plan을 입력으로 받아 **최적화된 physical plan**(물리 계획; execution plan 혹은 실행 계획이라고도 불림)을 생성합니다. 이 과정에서 이름에 걸맞게 logical plan 혹은 physical plan을 더 좋은 성능을 가지도록 최적화합니다. Physical plan은 logical plan을 어떻게 실행할지에 대한 정보를 포함하고 있습니다. 예를들어 위의 logical plan에는 "Join을 한다"라는 정보를 포함하고 있다면, physical plan에는 "Join을 Hash Join을 통해 처리한다"라는 정보를 포함하고 있습니다.
 
-Physical plan은 (이미지의) Execution Engine에게 전달 및 처리되게 됩니다. **Execution Engine은 Storage Engine이 제공하는 데이터 형태에 따라 physical plan을 처리합니다.** 예를들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 형태 또한 column oriented data structure로 관리될 것입니다(e.g., 예를들어 `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다).
+Execution Engine은 생성된 physical plan을 처리하며, Storage Engine은 디스크 장치에서 데이터를 읽고 쓰면서 Execution Engine을 위한 물리적 데이터 구조를 제공합니다.
+**Execution Engine은 Storage Engine이 제공하는 데이터 구조에 따라 쿼리를 처리합니다.** 
+예를 들어 column oriented layout을 이용하여 데이터를 관리하는 storage engine을 사용한다면, 내부 데이터 구조 또한 column oriented가 될 것입니다(e.g., `int` 타입의 컬럼이라면, `vector<int> columnChunk` 와 같은 형태로 데이터를 관리합니다).
+그러면 execution engine은 이 데이터 구조를 사용하여 쿼리를 처리하게 됩니다.
 
 이 섹션에서 Query Processor, Execution Engine, Storage Engine의 역할을 간략하게 알아보았습니다. Apache Arrow는 여기에서 Storage Engine의 데이터 관리 형태, Apache DataFusion은 Query Processor와 Execution Engine에 해당한다고 볼 수 있습니다. 자세한 내용을 앞으로 살펴보겠습니다.
 
