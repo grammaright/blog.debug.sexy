@@ -22,9 +22,14 @@ Apache Parquet is an open-source column-oriented data file format for efficient 
 *Internal Structure of a Parquet File [1]* 
 {: refdef}
 
-The above diagram shows the structure of a single Parquet file. One Parquet file contains one table's data. The file has data areas and metadata areas. The data area consists of consecutive row groups, and each row group contains data for a specific number of records (tuples) stored as column chunks. One column chunk corresponds to one column, and it consists of multiple pages. Each page manages page headers (metadata) that represent page information, repetition levels and definition levels for managing nested data (e.g., JSON, Protobuf, etc.) (we'll cover this later), and actual data.
-
-The metadata is defined using Thrift Protocol [2]. The file metadata located at the very end of the file stores schema information, information about each row group (data location, compression method, etc.).
+The above diagram shows the structure of a single Parquet file.
+One Parquet file contains one table's data.
+The file has a data area and metadata areas.
+The data area consists of consecutive row groups, and each row group contains data for a specific number of records (tuples) stored as column chunks.
+One column chunk corresponds to one column, and it consists of multiple pages.
+Each page contains a page header (metadata) that includes page information, repetition and definition levels for managing nested data (e.g., JSON, Protobuf, etc.) (we'll cover this later), and the actual data.
+The metadata located at the end of the file stores schema information and details about each row group like data location and compression method.
+The metadata is defined using Thrift Protocol [2]. 
 
 This method of storing data divided into row groups and column chunks is called PAX (Partition Attributes Across). DuckDB's storage format is also structured in a similar way [6].
 
@@ -34,7 +39,9 @@ Parquet supports predicate pushdown functionality for fast scan performance and 
 
 #### Zone Map
 
-Parquet records the minimum and maximum values of data as statistical information for each column chunk within each row group. This is called a **zone map**. With zone maps, when performing scans on Parquet files, scans of unrelated column chunks can be skipped.
+Parquet records the minimum and maximum values of data as statistical information for each column chunk within each row group.
+This is called a **zone map**.
+With zone maps, when performing scans on Parquet files, scans of unrelated row groups can be skipped.
 
 For example, suppose we have order data sorted by `ORDER BY created_date`. If Row Group A has min=2025-01-01, max=2025-01-31 for `created_date`, and Row Group B has min=2025-02-01, max=2025-02-28 in its zone map, then when executing a query like `WHERE created_date >= '2025-02-15'`, Row Group A can be skipped without scanning.
 
@@ -65,11 +72,14 @@ This allows for additional compression of data to achieve even more efficient st
 Run-length encoding converts data containing repeated values into pairs of values and repetition counts.
 For example, with data like [1,1,2,2,2,2,3,3], the run-length encoding result would be [(1,2),(2,4),(3,2)].
 
-Another encoding method, bitpacking encoding, is an encoding method that uses only the minimum bits needed when storing data. Even though we represent data as 32-bit integers, we don't always use all 32 bits. If we know the domain of this data (e.g., if data in an int32 type column chunk has a range of 0-1000), we can reduce the number of bits used based on this information (e.g., since 2¹⁰=1024 provides sufficient coverage, it can be represented with 10 bits+α).
+Another encoding method, bitpacking encoding, uses only the minimum bits needed when storing data.
+Even though we represent data as 32-bit integers, we don't always use all 32 bits.
+If we know the range of this data (e.g., if int32 type data within a page have a range of 0-1000), we can reduce the number of bits used based on this information (e.g., since 2¹⁰=1024 provides sufficient coverage, it can be represented with 10 bits+α).
 
 Run-length encoding and bitpacking encoding can be applied to data independently without dictionary encoding.
 
-Parquet uses dictionary encoding in low cardinality situations (i.e., when there are few distinct values). This applies when the same values appear frequently in a column, where dictionary encoding would be effective.
+Parquet uses dictionary encoding in low cardinality situations.
+This applies when the same values appear frequently in a column, where dictionary encoding would be effective.
 
 #### Bloom Filter
 
