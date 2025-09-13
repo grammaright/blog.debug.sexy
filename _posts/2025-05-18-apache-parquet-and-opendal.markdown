@@ -85,7 +85,7 @@ This applies when the same values appear frequently in a column, where dictionar
 
 There may be cases where the zone maps or dictionary encoding explored above are ineffective. Data might have large cardinality while being very skewed. So how can we create fast scans in such cases?
 
-Parquet uses *bloom filters* [8] for such cases. A bloom filter is a data structure that probabilistically determines whether a specific element is included in a set. If it returns "No," the data is definitely not there, and if it returns "Yes," the data may or may not be there (False Positive). Bloom filters can quickly process "Yes" or "No" queries using a small amount of memory (fewer bits than the number of data items N). When storing data, Parquet creates bloom filters, and when we search for data, we use these bloom filters. If the bloom filter returns "Yes," we scan the corresponding column chunk; if it returns "No," we skip that data.
+Parquet uses *bloom filters* [8] for such cases. A bloom filter is a data structure that probabilistically determines whether a specific element is included in a set. If it returns "No," the data is definitely not there, and if it returns "Yes," the data may or may not be there (False Positive). Bloom filters can quickly process "Yes" or "No" queries using a small amount of memory (fewer bits than the number of data items N). When storing data, Parquet creates bloom filters, and when we search for data, these bloom filters are used. If the bloom filter returns "Yes," we scan the corresponding column chunk; if it returns "No," we skip that data.
 
 #### Compression
 
@@ -131,7 +131,7 @@ OpenDAL is a data access layer that can communicate seamlessly with various stor
 
 OpenDAL has Service, Layer, and Operator components.
 
-- Service is a component that specifies storage backends. It provides services for bucket services like AWS S3 and Azure Blob (Azblob), as well as POSIX file systems (Fs) and database access services like PostgreSQL and MongoDB [5].
+- Service is a component that specifies storage backends. It provides access to bucket services like AWS S3 and Azure Blob (Azblob), as well as POSIX file systems (Fs) and database access services like PostgreSQL and MongoDB [5].
     
 - Layer provides additional functionality that can be used when accessing data. It provides `LoggingLayer` for logging during data operations, `RetryLayer` for automatic retries on operation failures, `TimeoutLayer` for setting timeouts, etc. [7]
     
